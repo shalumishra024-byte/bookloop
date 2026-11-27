@@ -227,7 +227,7 @@ export const LibrarianBorrowings: React.FC = () => {
                 <select
                   value={pickupHours}
                   onChange={(e) => setPickupHours(Number(e.target.value))}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs"
+                  className="flex h-9 w-full rounded-md border border-input bg-card text-card-foreground px-3 py-1 text-xs"
                 >
                   <option value={24}>24 Hours (Next day)</option>
                   <option value={48}>48 Hours (Standard)</option>

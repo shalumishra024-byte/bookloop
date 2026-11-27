@@ -108,7 +108,7 @@ export const StudentDashboard: React.FC = () => {
             </p>
           </div>
           <Link to="/student/borrowings">
-            <Button size="sm" variant="outline" className="text-xs h-7 bg-background">
+            <Button size="sm" variant="outline" className="text-xs h-7">
               View Details
             </Button>
           </Link>

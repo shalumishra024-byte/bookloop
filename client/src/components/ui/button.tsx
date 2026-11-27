@@ -9,37 +9,21 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'default', size = 'default', isActive = false, onClick, ...props }, ref) => {
-    const [isClicked, setIsClicked] = React.useState(false);
-    const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    React.useEffect(() => {
-      return () => {
-        if (timerRef.current) clearTimeout(timerRef.current);
-      };
-    }, []);
-
-    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-      setIsClicked(true);
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => setIsClicked(false), 220);
-      onClick?.(e);
-    };
-
+  ({ className, variant = 'default', size = 'default', isActive = false, ...props }, ref) => {
     const baseStyles =
-      'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CE6F87] disabled:pointer-events-none disabled:opacity-50 select-none active:scale-[0.98]';
+      'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CE6F87] disabled:pointer-events-none disabled:opacity-50 select-none active:scale-[0.98]';
+
+    const pinkButtonStyle =
+      'bg-[#CE6F87] text-white border border-[#CE6F87] shadow-sm [@media(hover:hover)]:hover:bg-[#FFF9F4] [@media(hover:hover)]:hover:text-[#2D161D] [@media(hover:hover)]:hover:border-[#CE6F87] active:bg-[#B85A72] active:text-white active:border-[#B85A72]';
 
     const variants = {
-      default:
-        'bg-[#F8DBBD] text-[#2D161D] border border-[#E8C4A0] shadow-sm hover:bg-[#F3CFA9] active:bg-[#CE6F87] active:text-white active:border-[#CE6F87]',
+      default: pinkButtonStyle,
+      secondary: pinkButtonStyle,
+      outline: pinkButtonStyle,
       destructive:
-        'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 active:bg-[#CE6F87] active:text-white',
-      outline:
-        'border border-[#E8C4A0] bg-[#F8DBBD]/45 text-foreground shadow-sm hover:bg-[#F8DBBD] hover:text-[#2D161D] active:bg-[#CE6F87] active:text-white active:border-[#CE6F87]',
-      secondary:
-        'bg-[#F8DBBD]/80 text-[#2D161D] border border-[#E8C4A0]/80 shadow-sm hover:bg-[#F8DBBD] active:bg-[#CE6F87] active:text-white active:border-[#CE6F87]',
+        'bg-destructive text-destructive-foreground border border-destructive shadow-sm [@media(hover:hover)]:hover:bg-[#FFF9F4] [@media(hover:hover)]:hover:text-destructive [@media(hover:hover)]:hover:border-destructive active:bg-[#B85A72] active:text-white',
       ghost:
-        'hover:bg-[#F8DBBD] hover:text-[#2D161D] active:bg-[#CE6F87] active:text-white',
+        'bg-transparent text-foreground [@media(hover:hover)]:hover:bg-[#FFF9F4] [@media(hover:hover)]:hover:text-[#2D161D] active:bg-[#CE6F87] active:text-white',
       link: 'text-[#CE6F87] underline-offset-4 hover:underline',
     };
 
@@ -50,17 +34,16 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       icon: 'h-9 w-9',
     };
 
-    const activePinkClass =
-      (isActive || isClicked) && variant !== 'link'
+    const activeClass =
+      isActive && variant !== 'link'
         ? '!bg-[#CE6F87] !text-white !border-[#CE6F87]'
         : '';
 
     return (
       <button
-        data-pressed={isActive || isClicked ? 'true' : 'false'}
-        className={cn(baseStyles, variants[variant], sizes[size], activePinkClass, className)}
+        data-active={isActive ? 'true' : 'false'}
+        className={cn(baseStyles, variants[variant], sizes[size], activeClass, className)}
         ref={ref}
-        onClick={handleClick}
         {...props}
       />
     );

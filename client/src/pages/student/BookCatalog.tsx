@@ -136,7 +136,7 @@ export const BookCatalog: React.FC = () => {
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="h-9 rounded-md border border-input bg-background px-3 py-1 text-xs"
+              className="h-9 rounded-md border border-input bg-card text-card-foreground px-3 py-1 text-xs"
             >
               <option value="ALL">All Availability</option>
               <option value="AVAILABLE">Available Now</option>
@@ -147,7 +147,7 @@ export const BookCatalog: React.FC = () => {
             <select
               value={selectedSource}
               onChange={(e) => setSelectedSource(e.target.value)}
-              className="h-9 rounded-md border border-input bg-background px-3 py-1 text-xs"
+              className="h-9 rounded-md border border-input bg-card text-card-foreground px-3 py-1 text-xs"
             >
               <option value="ALL">All Sources</option>
               <option value="LIBRARY">College Library Stock</option>

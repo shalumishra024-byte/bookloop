@@ -116,7 +116,11 @@ export const LibrarianDonations: React.FC = () => {
               size="sm"
               variant="default"
               isActive={filterStatus === status}
-              className="text-xs h-8"
+              className={`text-xs h-8 ${
+                filterStatus === status
+                  ? ''
+                  : '!bg-[#FFF9F4] !text-[#2D161D] !border-[#E8C4A0] [@media(hover:hover)]:hover:!bg-[#CE6F87] [@media(hover:hover)]:hover:!text-white [@media(hover:hover)]:hover:!border-[#CE6F87]'
+              }`}
               onClick={() => setFilterStatus(status)}
             >
               {status === 'ALL' ? `All (${donations.length})` : status === 'PENDING' ? `Pending (${pendingCount})` : status}
@@ -358,7 +362,7 @@ export const LibrarianDonations: React.FC = () => {
                     <select
                       value={verifiedCondition}
                       onChange={(e) => setVerifiedCondition(e.target.value as BookCondition)}
-                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs"
+                      className="flex h-9 w-full rounded-md border border-input bg-card text-card-foreground px-3 py-1 text-xs"
                     >
                       <option value="EXCELLENT">Excellent</option>
                       <option value="GOOD">Good</option>
@@ -388,7 +392,7 @@ export const LibrarianDonations: React.FC = () => {
                           className={`h-6 text-[11px] rounded border font-mono transition-colors ${
                             verifiedRating === num
                               ? 'bg-[#CE6F87] text-white border-[#CE6F87] font-bold'
-                              : 'bg-[#F8DBBD] text-[#2D161D] border-[#E8C4A0] hover:bg-[#F3CFA9]'
+                              : 'bg-white text-[#2D161D] border-[#E8C4A0] hover:bg-[#FFF9F4]'
                           }`}
                         >
                           {num}
@@ -400,7 +404,7 @@ export const LibrarianDonations: React.FC = () => {
                   <div className="space-y-1">
                     <label className="text-xs font-medium">Librarian Review Note</label>
                     <textarea
-                      className="w-full rounded-md border border-input bg-background p-2 text-xs"
+                      className="w-full rounded-md border border-input bg-card text-card-foreground p-2 text-xs"
                       rows={2}
                       placeholder="e.g. Inspected photos and physical copy; verified rating 7/10."
                       value={notes}
@@ -440,7 +444,7 @@ export const LibrarianDonations: React.FC = () => {
               </Button>
               <Button
                 size="sm"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="bg-emerald-600 border-emerald-600 text-white [@media(hover:hover)]:hover:bg-emerald-700 [@media(hover:hover)]:hover:text-white [@media(hover:hover)]:hover:border-emerald-700"
                 onClick={() => handleDecision('APPROVE')}
                 disabled={processing}
               >

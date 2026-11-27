@@ -61,10 +61,10 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
       {/* Mobile Top Header */}
-      <header className="md:hidden flex items-center justify-between p-4 border-b border-border bg-card">
+      <header className="md:hidden flex items-center justify-between p-4 border-b border-[#DEC0A4] bg-[#F8DBBD]">
         <div className="flex items-center space-x-2">
           <BrandLogo className="h-7 w-7 rounded-lg" />
-          <span className="font-bold tracking-tight text-lg">BookLoop</span>
+          <span className="font-bold tracking-tight text-lg text-[#2D161D]">BookLoop</span>
           <Badge variant={isLibrarian ? 'default' : 'secondary'} className="text-[10px] ml-1">
             {isLibrarian ? 'Librarian' : 'Student'}
           </Badge>
@@ -81,18 +81,18 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
 
       {/* Sidebar - Desktop */}
       <aside className={`
-        fixed inset-y-0 left-0 z-40 w-64 border-r border-border bg-card flex flex-col justify-between
+        fixed inset-y-0 left-0 z-40 w-64 border-r border-[#DEC0A4] bg-[#F8DBBD] flex flex-col justify-between
         transition-transform duration-200 md:static md:translate-x-0
         ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-0 hidden md:flex'}
       `}>
         <div>
           {/* Logo & Branding */}
-          <div className="p-5 border-b border-border flex items-center justify-between">
+          <div className="p-5 border-b border-[#DEC0A4] flex items-center justify-between">
             <Link to={isLibrarian ? '/librarian' : '/student'} className="flex items-center space-x-2.5">
               <BrandLogo className="h-9 w-9 rounded-lg shadow-sm" />
               <div>
-                <span className="font-bold text-base tracking-tight block">BookLoop</span>
-                <span className="text-xs text-muted-foreground block -mt-1">College Library</span>
+                <span className="font-bold text-base tracking-tight block text-[#2D161D]">BookLoop</span>
+                <span className="text-xs text-[#6E4753] block -mt-1">College Library</span>
               </div>
             </Link>
             <Badge variant={isLibrarian ? 'default' : 'secondary'} className="text-[11px] font-mono">
@@ -101,11 +101,11 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
           </div>
 
           {/* User Quick Info */}
-          <div className="p-4 mx-3 my-3 rounded-lg bg-muted/60 border border-border/60">
+          <div className="p-4 mx-3 my-3 rounded-lg bg-white/90 border border-[#DEC0A4]">
             <div className="flex items-center justify-between">
               <div className="min-w-0 pr-2">
-                <p className="text-xs font-semibold truncate">{user?.name || 'User'}</p>
-                <p className="text-[11px] text-muted-foreground truncate">{user?.email}</p>
+                <p className="text-xs font-semibold truncate text-[#2D161D]">{user?.name || 'User'}</p>
+                <p className="text-[11px] text-[#6E4753] truncate">{user?.email}</p>
               </div>
               {!isLibrarian && studentProfile && (
                 <div className="text-right flex-shrink-0" title="Donation-based Impact Score">
@@ -113,7 +113,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                     <Sparkles className="h-3.5 w-3.5 mr-1 text-amber-500 fill-amber-500" />
                     <span>{studentProfile.impactScore} pts</span>
                   </div>
-                  <span className="text-[10px] text-muted-foreground">Impact</span>
+                  <span className="text-[10px] text-[#6E4753]">Impact</span>
                 </div>
               )}
             </div>
@@ -133,10 +133,10 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                     flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors
                     ${active 
                       ? 'bg-[#CE6F87] text-white font-semibold shadow-sm' 
-                      : 'text-muted-foreground hover:bg-[#F8DBBD] hover:text-[#2D161D] active:bg-[#CE6F87] active:text-white'}
+                      : 'text-[#2D161D]/85 [@media(hover:hover)]:hover:bg-[#FFF9F4] [@media(hover:hover)]:hover:text-[#2D161D] active:bg-[#B85A72] active:text-white'}
                   `}
                 >
-                  <Icon className={`h-4 w-4 ${active ? 'text-white' : 'text-muted-foreground'}`} />
+                  <Icon className={`h-4 w-4 ${active ? 'text-white' : 'text-[#6E4753]'}`} />
                   <span>{item.label}</span>
                 </Link>
               );
@@ -145,7 +145,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
         </div>
 
         {/* Sidebar Footer (Theme & Logout only - Switch View removed for security) */}
-        <div className="p-4 border-t border-border">
+        <div className="p-4 border-t border-[#DEC0A4]">
           <div className="flex items-center justify-between">
             <Button
               variant="outline"
@@ -182,20 +182,20 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         {/* Desktop Header bar */}
-        <div className="hidden md:flex h-14 items-center justify-between px-6 border-b border-border bg-card/60 backdrop-blur-xs sticky top-0 z-30">
+        <div className="hidden md:flex h-14 items-center justify-between px-6 border-b border-[#DEC0A4] bg-[#F8DBBD]/90 backdrop-blur-xs sticky top-0 z-30">
           <div className="flex items-center space-x-3">
-            <span className="text-sm font-medium text-muted-foreground">
+            <span className="text-sm font-medium text-[#6E4753]">
               {isLibrarian ? 'Library Administration Portal' : 'Student Library Portal'}
             </span>
           </div>
           <div className="flex items-center space-x-3">
             {!isLibrarian && studentProfile && (
-              <div className="flex items-center space-x-2 bg-muted px-3 py-1 rounded-full text-xs font-medium border border-border">
+              <div className="flex items-center space-x-2 bg-white px-3 py-1 rounded-full text-xs font-medium border border-[#DEC0A4]">
                 <Sparkles className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
                 <span>Impact Score: <strong>{studentProfile.impactScore}</strong></span>
               </div>
             )}
-            <Badge variant="outline" className="text-xs font-mono">
+            <Badge variant="outline" className="text-xs font-mono bg-white">
               {user?.role}
             </Badge>
           </div>

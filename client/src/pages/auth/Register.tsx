@@ -156,7 +156,7 @@ export const Register: React.FC = () => {
                     name="department"
                     value={formData.department}
                     onChange={handleChange}
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                    className="flex h-9 w-full rounded-md border border-input bg-card text-card-foreground px-3 py-1 text-sm shadow-sm"
                   >
                     <option value="Computer Science & Engineering">Computer Science</option>
                     <option value="Information Technology">Information Tech</option>
@@ -172,7 +172,7 @@ export const Register: React.FC = () => {
                     name="academicYear"
                     value={formData.academicYear}
                     onChange={handleChange}
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                    className="flex h-9 w-full rounded-md border border-input bg-card text-card-foreground px-3 py-1 text-sm shadow-sm"
                   >
                     <option value="1st Year">1st Year</option>
                     <option value="2nd Year">2nd Year</option>
@@ -187,7 +187,7 @@ export const Register: React.FC = () => {
                     name="semester"
                     value={formData.semester}
                     onChange={handleChange}
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                    className="flex h-9 w-full rounded-md border border-input bg-card text-card-foreground px-3 py-1 text-sm shadow-sm"
                   >
                     <option value="1st Semester">Sem 1</option>
                     <option value="2nd Semester">Sem 2</option>

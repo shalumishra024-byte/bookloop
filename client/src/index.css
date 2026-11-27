@@ -4,47 +4,48 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 9%;
+    /* BookLoop Official Theme: Light Cream (#F8DBBD) main background + White cards + Pink (#CE6F87) primary */
+    --background: 30 82% 86%;
+    --foreground: 342 34% 13%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 9%;
+    --card-foreground: 342 34% 13%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 9%;
-    --primary: 30 82% 86%;
-    --primary-foreground: 342 34% 13%;
-    --secondary: 30 60% 92%;
+    --popover-foreground: 342 34% 13%;
+    --primary: 345 49% 62%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 30 100% 98%;
     --secondary-foreground: 342 34% 13%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 345 49% 62%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
+    --muted: 30 55% 94%;
+    --muted-foreground: 342 18% 36%;
+    --accent: 30 100% 98%;
+    --accent-foreground: 342 34% 13%;
+    --destructive: 0 78% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 30 45% 76%;
+    --input: 30 45% 78%;
     --ring: 345 49% 62%;
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 0 0% 6%;
-    --foreground: 0 0% 96%;
-    --card: 0 0% 10%;
-    --card-foreground: 0 0% 96%;
-    --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 96%;
-    --primary: 30 82% 86%;
-    --primary-foreground: 342 34% 13%;
-    --secondary: 30 35% 22%;
+    --background: 342 22% 10%;
+    --foreground: 30 60% 94%;
+    --card: 342 20% 14%;
+    --card-foreground: 30 60% 94%;
+    --popover: 342 20% 14%;
+    --popover-foreground: 30 60% 94%;
+    --primary: 345 49% 62%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 342 18% 20%;
     --secondary-foreground: 30 82% 86%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 345 49% 62%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 62.8% 40%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 18%;
-    --input: 0 0% 18%;
+    --muted: 342 18% 18%;
+    --muted-foreground: 30 25% 70%;
+    --accent: 30 100% 98%;
+    --accent-foreground: 342 34% 13%;
+    --destructive: 0 62.8% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 342 18% 24%;
+    --input: 342 18% 24%;
     --ring: 345 49% 62%;
   }
 }

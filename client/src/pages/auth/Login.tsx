@@ -86,7 +86,11 @@ export const Login: React.FC = () => {
                     type="button"
                     variant="default"
                     isActive={selectedRole === 'STUDENT'}
-                    className="w-full text-xs font-medium flex items-center justify-center"
+                    className={`w-full text-xs font-medium flex items-center justify-center ${
+                      selectedRole === 'STUDENT'
+                        ? ''
+                        : '!bg-[#FFF9F4] !text-[#2D161D] !border-[#E8C4A0] [@media(hover:hover)]:hover:!bg-[#CE6F87] [@media(hover:hover)]:hover:!text-white [@media(hover:hover)]:hover:!border-[#CE6F87]'
+                    }`}
                     onClick={() => {
                       setSelectedRole('STUDENT');
                       setError('');
@@ -99,7 +103,11 @@ export const Login: React.FC = () => {
                     type="button"
                     variant="default"
                     isActive={selectedRole === 'LIBRARIAN'}
-                    className="w-full text-xs font-medium flex items-center justify-center"
+                    className={`w-full text-xs font-medium flex items-center justify-center ${
+                      selectedRole === 'LIBRARIAN'
+                        ? ''
+                        : '!bg-[#FFF9F4] !text-[#2D161D] !border-[#E8C4A0] [@media(hover:hover)]:hover:!bg-[#CE6F87] [@media(hover:hover)]:hover:!text-white [@media(hover:hover)]:hover:!border-[#CE6F87]'
+                    }`}
                     onClick={() => {
                       setSelectedRole('LIBRARIAN');
                       setError('');

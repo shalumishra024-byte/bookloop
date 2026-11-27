@@ -275,7 +275,7 @@ export const StudentDonations: React.FC = () => {
               <select
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs"
+                className="flex h-9 w-full rounded-md border border-input bg-card text-card-foreground px-3 py-1 text-xs"
               >
                 <option value="Computer Science">Computer Science</option>
                 <option value="Software Engineering">Software Engineering</option>
@@ -290,7 +290,7 @@ export const StudentDonations: React.FC = () => {
               <select
                 value={formData.condition}
                 onChange={(e) => handleConditionChange(e.target.value as BookCondition)}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs"
+                className="flex h-9 w-full rounded-md border border-input bg-card text-card-foreground px-3 py-1 text-xs"
               >
                 <option value="EXCELLENT">Excellent</option>
                 <option value="GOOD">Good</option>
@@ -324,7 +324,7 @@ export const StudentDonations: React.FC = () => {
           <div className="space-y-1">
             <label className="text-xs font-medium text-foreground">Condition Notes / Description *</label>
             <textarea
-              className="flex w-full rounded-md border border-input bg-background p-2 text-xs shadow-sm"
+              className="flex w-full rounded-md border border-input bg-card text-card-foreground p-2 text-xs shadow-sm"
               rows={2}
               placeholder="Describe binding, pages, highlights or missing marks..."
               value={formData.description}

@@ -1,0 +1,252 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  STUDENT
+  LIBRARIAN
+}
+
+model User {
+  id                String          @id @default(uuid())
+  email             String          @unique
+  name              String
+  passwordHash      String?
+  role              UserRole        @default(STUDENT)
+  avatarUrl         String?
+  isProfileComplete Boolean         @default(false)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  studentProfile    StudentProfile?
+  borrowRequests    BorrowRequest[]
+  borrowTransactions BorrowTransaction[]
+  donationRequests  DonationRequest[]
+  queueEntries      QueueEntry[]
+
+  @@map("users")
+}
+
+model StudentProfile {
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+  studentId             String   @unique // College Registration / Roll No
+  department            String
+  academicYear          String
+  semester              String
+  collegeAffiliation    String
+  impactScore           Int      @default(0) // Derived strictly from approved donations
+  totalDonations        Int      @default(0)
+  activeBorrowingsCount Int      @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  impactTransactions    ImpactScoreTransaction[]
+
+  @@index([impactScore(sort: Desc)])
+  @@map("student_profiles")
+}
+
+enum BookSource {
+  LIBRARY
+  DONATION
+}
+
+enum BookStatus {
+  AVAILABLE
+  UNAVAILABLE
+  LOW_STOCK
+}
+
+model Book {
+  id              String       @id @default(uuid())
+  title           String
+  author          String
+  isbn            String?
+  category        String
+  description     String
+  totalCopies     Int          @default(1)
+  availableCopies Int          @default(1)
+  coverImage      String?
+  source          BookSource   @default(LIBRARY)
+  donorName       String?
+  status          BookStatus   @default(AVAILABLE)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  copies          BookCopy[]
+  borrowRequests  BorrowRequest[]
+  queueEntries    QueueEntry[]
+
+  @@index([category])
+  @@index([status])
+  @@map("books")
+}
+
+enum CopyStatus {
+  AVAILABLE
+  RESERVED
+  ISSUED
+  MAINTENANCE
+}
+
+enum BookCondition {
+  EXCELLENT
+  GOOD
+  ACCEPTABLE
+}
+
+model BookCopy {
+  id          String        @id @default(uuid())
+  bookId      String
+  copyNumber  String        @unique // Physical barcode / identifier (e.g., CL-CS-001A)
+  status      CopyStatus    @default(AVAILABLE)
+  condition   BookCondition @default(GOOD)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  book        Book          @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  borrowRequests BorrowRequest[]
+  transactions BorrowTransaction[]
+
+  @@index([bookId, status])
+  @@map("book_copies")
+}
+
+enum BorrowRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELLED
+  COMPLETED
+}
+
+model BorrowRequest {
+  id                   String              @id @default(uuid())
+  studentId            String
+  bookId               String
+  bookCopyId           String?
+  requestDate          DateTime            @default(now())
+  status               BorrowRequestStatus @default(PENDING)
+  pickupDeadline       DateTime?
+  pickupWindowHours    Int                 @default(48)
+  impactScoreAtRequest Int                 @default(0)
+  librarianNotes       String?
+  reviewDate           DateTime?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  student              User                @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  book                 Book                @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  copy                 BookCopy?           @relation(fields: [bookCopyId], references: [id], onDelete: SetNull)
+  transaction          BorrowTransaction?
+
+  @@index([studentId, status])
+  @@index([bookId, status])
+  @@map("borrow_requests")
+}
+
+enum BorrowTransactionStatus {
+  ISSUED
+  RETURNED
+  OVERDUE
+}
+
+model BorrowTransaction {
+  id                 String                  @id @default(uuid())
+  requestId          String                  @unique
+  studentId          String
+  bookCopyId         String
+  issueDate          DateTime                @default(now())
+  expectedReturnDate DateTime
+  actualReturnDate   DateTime?
+  status             BorrowTransactionStatus @default(ISSUED)
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  request            BorrowRequest           @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  student            User                    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  copy               BookCopy                @relation(fields: [bookCopyId], references: [id], onDelete: Restrict)
+
+  @@index([studentId, status])
+  @@index([bookCopyId, status])
+  @@map("borrow_transactions")
+}
+
+enum DonationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model DonationRequest {
+  id             String         @id @default(uuid())
+  studentId      String
+  title          String
+  author         String
+  isbn           String?
+  category       String?
+  description    String
+  condition      BookCondition  @default(GOOD)
+  images         String[]       // URLs to uploaded book condition photographs
+  status         DonationStatus @default(PENDING)
+  pointsAwarded  Int?
+  librarianNotes String?
+  reviewedAt     DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  student        User           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  impactTx       ImpactScoreTransaction?
+
+  @@index([studentId, status])
+  @@map("donation_requests")
+}
+
+enum QueueStatus {
+  WAITING
+  OFFERED
+  CONVERTED
+  CANCELLED
+}
+
+model QueueEntry {
+  id                  String      @id @default(uuid())
+  studentId           String
+  bookId              String
+  queuePosition       Int
+  requestTimestamp    DateTime    @default(now())
+  impactScoreSnapshot Int
+  status              QueueStatus @default(WAITING)
+  reservationDeadline DateTime?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  student             User        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  book                Book        @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  // Critical composite index for fast queue sorting: Impact Score DESC, timestamp ASC
+  @@index([bookId, status, impactScoreSnapshot(sort: Desc), requestTimestamp(sort: Asc)])
+  @@map("queue_entries")
+}
+
+model ImpactScoreTransaction {
+  id                String          @id @default(uuid())
+  studentProfileId  String
+  donationRequestId String?         @unique
+  pointsAwarded     Int
+  reason            String
+  createdAt         DateTime        @default(now())
+
+  studentProfile    StudentProfile  @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  donationRequest   DonationRequest? @relation(fields: [donationRequestId], references: [id], onDelete: SetNull)
+
+  @@map("impact_score_transactions")
+}

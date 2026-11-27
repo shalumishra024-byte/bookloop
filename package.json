@@ -1,0 +1,27 @@
+{
+  "name": "college-library",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace=@college-library/web run dev",
+    "dev:api": "npm --workspace=@college-library/api run dev",
+    "build:web": "npm --workspace=@college-library/web run build",
+    "build:api": "npm --workspace=@college-library/api run build",
+    "build:shared": "npm --workspace=@college-library/shared run build",
+    "build": "npm run build:shared && npm run build:web && npm run build:api",
+    "db:generate": "npx prisma generate",
+    "db:push": "npx prisma db push"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "@neon/auth": "^0.8.2",
+    "@neon/config": "^1.14.8",
+    "@neon/env": "^2.1.11"
+  }
+}

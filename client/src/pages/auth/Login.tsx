@@ -16,15 +16,15 @@ export const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) {
-      setError('Please enter your email address');
+    if (!email || !password) {
+      setError('Please enter both your email address and password');
       return;
     }
     setLoading(true);
     setError('');
     try {
-      // Login returns verified role from Neon Auth + backend
-      const verifiedRole = await login(email, password || 'password123');
+      // Login returns verified role from Neon Auth + database
+      const verifiedRole = await login(email, password);
       if (verifiedRole === 'LIBRARIAN') {
         navigate('/librarian');
       } else {
@@ -59,7 +59,7 @@ export const Login: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      await loginWithGoogle('STUDENT');
+      await loginWithGoogle();
     } catch (err: any) {
       setError(err.message || 'Google authentication failed');
     } finally {
@@ -120,6 +120,7 @@ export const Login: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-9"
+                    required
                   />
                   <Lock className="h-4 w-4 text-muted-foreground absolute left-3 top-2.5" />
                 </div>

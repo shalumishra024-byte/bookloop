@@ -29,6 +29,15 @@ export interface StudentProfile {
   activeBorrowingsCount: number;
 }
 
+export interface LibrarianProfile {
+  id: string;
+  userId: string;
+  librarianId: string;
+  designation: string;
+  libraryName: string;
+  department: string;
+}
+
 export type BookSource = 'LIBRARY' | 'DONATION';
 export type BookStatus = 'AVAILABLE' | 'UNAVAILABLE' | 'LOW_STOCK';
 export type BookCondition = 'EXCELLENT' | 'GOOD' | 'ACCEPTABLE';

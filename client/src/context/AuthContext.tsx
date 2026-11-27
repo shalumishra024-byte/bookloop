@@ -1,20 +1,21 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, StudentProfile, UserRole } from '@college-library/shared';
+import { User, StudentProfile, LibrarianProfile, UserRole } from '@college-library/shared';
 import { authClient } from '@/lib/authClient';
 import { API_BASE_URL } from '@/lib/api';
 
 interface AuthContextType {
   user: User | null;
   studentProfile: StudentProfile | null;
+  librarianProfile: LibrarianProfile | null;
   role: UserRole | null;
   isAuthenticated: boolean;
   loading: boolean;
-  login: (email: string, password?: string) => Promise<UserRole>;
-  loginWithGoogle: (role?: UserRole) => Promise<void>;
+  login: (email: string, password: string) => Promise<UserRole>;
+  loginWithGoogle: () => Promise<void>;
   registerStudent: (data: {
     fullName: string;
     email: string;
-    password?: string;
+    password: string;
     studentId: string;
     department: string;
     academicYear: string;
@@ -22,7 +23,7 @@ interface AuthContextType {
     collegeAffiliation: string;
   }) => Promise<boolean>;
   updateStudentProfile: (data: Partial<StudentProfile>) => Promise<void>;
-  switchRole: (role: UserRole) => Promise<void>;
+  updateLibrarianProfile: (data: Partial<LibrarianProfile>) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -31,51 +32,56 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
+  const [librarianProfile, setLibrarianProfile] = useState<LibrarianProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Validate session on mount with Neon Auth and database
+  // Validate session on mount strictly against server-verified database role
   useEffect(() => {
     const initSession = async () => {
       try {
         const token = localStorage.getItem('bookloop_token');
 
-        // Check active session in Neon Managed Better Auth
-        let sessionEmail: string | undefined;
+        if (token) {
+          const res = await fetch(`${API_BASE_URL}/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setUser(data.user);
+            setStudentProfile(data.profile || null);
+            setLibrarianProfile(data.librarianProfile || null);
+            setLoading(false);
+            return;
+          }
+          localStorage.removeItem('bookloop_token');
+        }
+
+        // Check if returning from Neon Auth OAuth (e.g. Google Sign-In)
         try {
           const sessionRes = await authClient.getSession();
-          if (sessionRes?.data?.user?.email) {
-            sessionEmail = sessionRes.data.user.email;
+          const neonToken = sessionRes?.data?.session?.token;
+          if (neonToken) {
+            const syncRes = await fetch(`${API_BASE_URL}/auth/sync`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ neonToken }),
+            });
+            if (syncRes.ok) {
+              const data = await syncRes.json();
+              localStorage.setItem('bookloop_token', data.token);
+              setUser(data.user);
+              setStudentProfile(data.profile || null);
+              setLibrarianProfile(data.librarianProfile || null);
+            }
           }
         } catch {
-          // No active Better Auth session
-        }
-
-        if (!token && !sessionEmail) {
-          setLoading(false);
-          return;
-        }
-
-        const headers: Record<string, string> = {};
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-
-        const url = sessionEmail
-          ? `${API_BASE_URL}/auth/me?email=${encodeURIComponent(sessionEmail)}`
-          : `${API_BASE_URL}/auth/me`;
-
-        const res = await fetch(url, { headers });
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data.user);
-          setStudentProfile(data.profile);
-        } else if (token) {
-          localStorage.removeItem('bookloop_token');
-          setUser(null);
-          setStudentProfile(null);
+          // No active Neon Auth session
         }
       } catch (err) {
         console.error('Session initialization error:', err);
         setUser(null);
         setStudentProfile(null);
+        setLibrarianProfile(null);
       } finally {
         setLoading(false);
       }
@@ -84,147 +90,140 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initSession();
   }, []);
 
-  const login = async (email: string, password: string = 'password123'): Promise<UserRole> => {
+  const login = async (email: string, password: string): Promise<UserRole> => {
+    const normalizedEmail = email.toLowerCase().trim();
+    let neonToken: string | undefined;
+
+    // 1. Authenticate via Neon Managed Better Auth
     try {
-      const normalizedEmail = email.toLowerCase().trim();
-
-      // 1. Sign in via Neon Managed Better Auth
-      try {
-        const neonRes = await authClient.signIn.email({
-          email: normalizedEmail,
-          password,
-        });
-        if (neonRes.error) {
-          console.warn('Neon auth sign-in info:', neonRes.error.message);
-        }
-      } catch (e) {
-        console.warn('Neon auth sign-in fetch warning:', e);
-      }
-
-      // 2. Fetch server-verified role and profile from database
-      const res = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: normalizedEmail, password }),
+      const neonRes = await authClient.signIn.email({
+        email: normalizedEmail,
+        password,
       });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Invalid credentials or user not found');
+      if (!neonRes.error && neonRes.data?.token) {
+        neonToken = neonRes.data.token;
       }
-
-      const data = await res.json();
-      localStorage.setItem('bookloop_token', data.token);
-      setUser(data.user);
-      setStudentProfile(data.profile);
-      return data.user.role as UserRole;
     } catch (e) {
-      console.error('Login error:', e);
-      throw e;
+      console.warn('Neon auth sign-in check:', e);
     }
+
+    // 2. Verify credentials and fetch authoritative role from database
+    const res = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: normalizedEmail, password, neonToken }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Invalid credentials or account not found');
+    }
+
+    const data = await res.json();
+    localStorage.setItem('bookloop_token', data.token);
+    setUser(data.user);
+    setStudentProfile(data.profile || null);
+    setLibrarianProfile(data.librarianProfile || null);
+    return data.user.role as UserRole;
   };
 
-  const loginWithGoogle = async (fallbackRole: UserRole = 'STUDENT'): Promise<void> => {
-    try {
-      await authClient.signIn.social({
-        provider: 'google',
-        callbackURL: window.location.origin,
-      });
-    } catch (e) {
-      console.warn('Direct Google OAuth redirection fallback:', e);
-      // Fallback demo account for local evaluation if Google OAuth credentials not yet added in Neon Console
-      const email = fallbackRole === 'LIBRARIAN' ? 'librarian@college.edu' : 'alex.rivera@college.edu';
-      await login(email, 'password123');
-    }
+  const loginWithGoogle = async (): Promise<void> => {
+    await authClient.signIn.social({
+      provider: 'google',
+      callbackURL: window.location.origin,
+    });
   };
 
   const registerStudent = async (data: {
     fullName: string;
     email: string;
-    password?: string;
+    password: string;
     studentId: string;
     department: string;
     academicYear: string;
     semester: string;
     collegeAffiliation: string;
   }): Promise<boolean> => {
+    const normalizedEmail = data.email.toLowerCase().trim();
+
+    // 1. Create account via Neon's Managed Better Auth
+    let neonUserId: string | undefined;
     try {
-      const normalizedEmail = data.email.toLowerCase().trim();
-
-      // 1. Create account via Neon's Managed Better Auth
-      let neonUserId: string | undefined;
-      try {
-        const neonRes = await authClient.signUp.email({
-          email: normalizedEmail,
-          password: data.password || 'password123',
-          name: data.fullName,
-        });
-
-        if (neonRes.error) {
-          throw new Error(neonRes.error.message || 'Neon Auth sign-up error');
-        }
-        neonUserId = neonRes.data?.user?.id;
-      } catch (neonErr: any) {
-        // If account already exists in Neon Auth, continue to sync profile
-        if (neonErr.message && !neonErr.message.includes('already exists')) {
-          console.warn('Neon auth note:', neonErr.message);
-        }
-      }
-
-      // 2. Persist student identity and profile with role 'STUDENT' in database
-      const res = await fetch(`${API_BASE_URL}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...data,
-          email: normalizedEmail,
-          neonUserId,
-        }),
+      const neonRes = await authClient.signUp.email({
+        email: normalizedEmail,
+        password: data.password,
+        name: data.fullName,
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Student registration failed');
+      if (neonRes.error) {
+        throw new Error(neonRes.error.message || 'Neon Auth sign-up error');
       }
-
-      const resData = await res.json();
-      localStorage.setItem('bookloop_token', resData.token);
-      setUser(resData.user);
-      setStudentProfile(resData.profile);
-      return true;
-    } catch (e) {
-      console.error('Registration error:', e);
-      throw e;
+      neonUserId = neonRes.data?.user?.id;
+    } catch (neonErr: any) {
+      if (neonErr.message && !neonErr.message.includes('already exists')) {
+        console.warn('Neon auth note:', neonErr.message);
+      }
     }
+
+    // 2. Persist student identity and profile with server-enforced STUDENT role
+    const res = await fetch(`${API_BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...data,
+        email: normalizedEmail,
+        neonUserId,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Student registration failed');
+    }
+
+    const resData = await res.json();
+    localStorage.setItem('bookloop_token', resData.token);
+    setUser(resData.user);
+    setStudentProfile(resData.profile || null);
+    setLibrarianProfile(null);
+    return true;
   };
 
   const updateStudentProfile = async (data: Partial<StudentProfile>) => {
     if (!studentProfile) return;
-    try {
-      const token = localStorage.getItem('bookloop_token');
-      const res = await fetch(`${API_BASE_URL}/auth/profile/${studentProfile.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(data),
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        setStudentProfile(updated);
-      }
-    } catch (e) {
-      console.error('Profile update error:', e);
+    const token = localStorage.getItem('bookloop_token');
+    const res = await fetch(`${API_BASE_URL}/auth/profile/${studentProfile.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to update profile');
     }
+    const updated = await res.json();
+    setStudentProfile(updated);
   };
 
-  const switchRole = async (newRole: UserRole) => {
-    if (newRole === 'LIBRARIAN') {
-      await login('librarian@college.edu', 'password123');
-    } else {
-      await login('alex.rivera@college.edu', 'password123');
+  const updateLibrarianProfile = async (data: Partial<LibrarianProfile>) => {
+    const token = localStorage.getItem('bookloop_token');
+    const res = await fetch(`${API_BASE_URL}/auth/librarian-profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to update librarian profile');
     }
+    const updated = await res.json();
+    setLibrarianProfile(updated);
   };
 
   const logout = async () => {
@@ -236,6 +235,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('bookloop_token');
       setUser(null);
       setStudentProfile(null);
+      setLibrarianProfile(null);
     }
   };
 
@@ -244,6 +244,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         user,
         studentProfile,
+        librarianProfile,
         role: user?.role || null,
         isAuthenticated: !!user,
         loading,
@@ -251,7 +252,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loginWithGoogle,
         registerStudent,
         updateStudentProfile,
-        switchRole,
+        updateLibrarianProfile,
         logout,
       }}
     >

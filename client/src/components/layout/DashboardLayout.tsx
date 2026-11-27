@@ -12,7 +12,6 @@ import {
   HeartHandshake,
   Users,
   Clock,
-  UserCheck,
   Settings,
   LogOut,
   Sun,
@@ -21,11 +20,10 @@ import {
   X,
   BookmarkCheck,
   Sparkles,
-  ArrowRightLeft,
 } from 'lucide-react';
 
 export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, studentProfile, role, switchRole, logout } = useAuth();
+  const { user, studentProfile, role, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -43,10 +41,10 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
   ];
 
   const librarianNavItems = [
-    { label: 'Overview', path: '/librarian', icon: LayoutDashboard },
+    { label: 'Librarian Dashboard', path: '/librarian', icon: LayoutDashboard },
+    { label: 'Manage Inventory', path: '/librarian/books', icon: Library },
     { label: 'Borrow Requests', path: '/librarian/requests', icon: GitPullRequest },
     { label: 'Issued Books', path: '/librarian/returns', icon: BookmarkCheck },
-    { label: 'Book Inventory', path: '/librarian/books', icon: Library },
     { label: 'Queue Priority', path: '/librarian/queue', icon: Clock },
     { label: 'Donation Requests', path: '/librarian/donations', icon: HeartHandshake },
     { label: 'Registered Students', path: '/librarian/students', icon: Users },
@@ -55,8 +53,8 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
 
   const navItems = isLibrarian ? librarianNavItems : studentNavItems;
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 
@@ -123,7 +121,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
             </div>
           </div>
 
-          {/* Navigation Links */}
+          {/* Navigation Links (Strictly derived from authenticated database role) */}
           <nav className="p-3 space-y-1">
             {navItems.map((item) => {
               const active = location.pathname === item.path;
@@ -148,44 +146,9 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
           </nav>
         </div>
 
-        {/* Sidebar Footer */}
-        <div className="p-4 border-t border-border space-y-3">
-          {/* Quick Role Switcher for convenience and evaluation */}
-          <div className="bg-muted/40 p-2.5 rounded-md border border-border/40">
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1.5">
-              <span>Switch View:</span>
-              <ArrowRightLeft className="h-3 w-3" />
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              <Button
-                variant={!isLibrarian ? 'default' : 'outline'}
-                size="sm"
-                className="text-xs h-7 py-0"
-                onClick={() => {
-                  switchRole('STUDENT');
-                  navigate('/student');
-                  setMobileMenuOpen(false);
-                }}
-              >
-                Student
-              </Button>
-              <Button
-                variant={isLibrarian ? 'default' : 'outline'}
-                size="sm"
-                className="text-xs h-7 py-0"
-                onClick={() => {
-                  switchRole('LIBRARIAN');
-                  navigate('/librarian');
-                  setMobileMenuOpen(false);
-                }}
-              >
-                Librarian
-              </Button>
-            </div>
-          </div>
-
-          {/* Theme & Logout */}
-          <div className="flex items-center justify-between pt-1">
+        {/* Sidebar Footer (Theme & Logout only - Switch View removed for security) */}
+        <div className="p-4 border-t border-border">
+          <div className="flex items-center justify-between">
             <Button
               variant="outline"
               size="sm"

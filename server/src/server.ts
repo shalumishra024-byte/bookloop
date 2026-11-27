@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { PrismaClient, BookCondition, BookSource, BookStatus, BorrowRequestStatus, BorrowTransactionStatus, CopyStatus, QueueStatus, UserRole } from '@prisma/client';
-import { authenticateToken, requireRole } from './middleware/auth.middleware.js';
+import { AuthenticatedRequest, authenticateToken, requireRole } from './middleware/auth.middleware.js';
 
 dotenv.config();
 
@@ -45,36 +45,73 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+const NEON_AUTH_BASE_URL = process.env.NEON_AUTH_BASE_URL || 'https://ep-morning-sea-bdolwkuy.neonauth.c-8.us-east-2.aws.neon.tech/neondb/auth';
+
+/**
+ * Verifies a Neon Managed Better Auth session token directly with Neon Auth.
+ * Returns the verified user { id, email, name } or null if invalid.
+ */
+async function verifyNeonAuthSession(token: string): Promise<{ id: string; email: string; name?: string } | null> {
+  if (!token) return null;
+  try {
+    const res = await fetch(`${NEON_AUTH_BASE_URL}/get-session`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { user?: { id: string; email: string; name?: string } };
+    if (data?.user?.id && data?.user?.email) {
+      return data.user;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // --- AUTHENTICATION ---
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email) return res.status(400).json({ error: 'Email is required' });
+    const { email, password, neonToken } = req.body;
+    let verifiedNeonUser: { id: string; email: string; name?: string } | null = null;
 
-    const normalizedEmail = email.toLowerCase().trim();
-    let user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-      include: { studentProfile: true },
-    });
+    if (neonToken) {
+      verifiedNeonUser = await verifyNeonAuthSession(neonToken);
+    }
+
+    const lookupEmail = (verifiedNeonUser?.email || email || '').toLowerCase().trim();
+    if (!lookupEmail) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Look up user by verified Neon user ID first, then by email
+    let user = verifiedNeonUser?.id
+      ? await prisma.user.findUnique({
+          where: { id: verifiedNeonUser.id },
+          include: { studentProfile: true, librarianProfile: true },
+        })
+      : null;
 
     if (!user) {
-      // If user was signed up in Neon Auth directly, check if we should auto-provision them
-      const role = normalizedEmail.includes('librarian') ? 'LIBRARIAN' : 'STUDENT';
-      user = await prisma.user.create({
-        data: {
-          name: normalizedEmail.split('@')[0],
-          email: normalizedEmail,
-          role,
-          isProfileComplete: role === 'LIBRARIAN',
-        },
-        include: { studentProfile: true },
+      user = await prisma.user.findUnique({
+        where: { email: lookupEmail },
+        include: { studentProfile: true, librarianProfile: true },
       });
     }
 
-    if (user.passwordHash && password) {
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials or account not found' });
+    }
+
+    // Require either a verified Neon Auth session OR a valid bcrypt password match
+    if (!verifiedNeonUser) {
+      if (!password || !user.passwordHash) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
       const match = await bcrypt.compare(password, user.passwordHash);
-      if (!match && password !== 'password123') {
-        return res.status(401).json({ error: 'Invalid password' });
+      if (!match) {
+        return res.status(401).json({ error: 'Invalid email or password' });
       }
     }
 
@@ -93,37 +130,45 @@ app.post('/api/auth/login', async (req, res) => {
         role: user.role,
         isProfileComplete: user.isProfileComplete,
       },
-      profile: user.studentProfile,
+      profile: user.role === 'STUDENT' ? user.studentProfile : null,
+      librarianProfile: user.role === 'LIBRARIAN' ? user.librarianProfile : null,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Neon Auth Sync & Auto-Provisioning
+// Neon Auth Sync (OAuth / verified Neon session only; never assigns LIBRARIAN role)
 app.post('/api/auth/sync', async (req, res) => {
   try {
-    const { email, name, neonUserId } = req.body;
-    if (!email) return res.status(400).json({ error: 'Email is required' });
+    const authHeader = req.headers.authorization;
+    const bearerToken = authHeader && authHeader.split(' ')[1];
+    const neonToken = req.body.neonToken || bearerToken;
 
-    const normalizedEmail = email.toLowerCase().trim();
-    let user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-      include: { studentProfile: true },
+    const verifiedNeonUser = await verifyNeonAuthSession(neonToken);
+    if (!verifiedNeonUser) {
+      return res.status(401).json({ error: 'Unauthorized: Valid Neon Auth session required' });
+    }
+
+    const normalizedEmail = verifiedNeonUser.email.toLowerCase().trim();
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [{ id: verifiedNeonUser.id }, { email: normalizedEmail }],
+      },
+      include: { studentProfile: true, librarianProfile: true },
     });
 
     if (!user) {
-      // Only predetermined college authority receives LIBRARIAN role
-      const role = normalizedEmail === 'librarian@college.edu' ? 'LIBRARIAN' : 'STUDENT';
+      // New accounts via public OAuth/sync ALWAYS receive STUDENT role
       user = await prisma.user.create({
         data: {
-          id: neonUserId || undefined,
+          id: verifiedNeonUser.id,
           email: normalizedEmail,
-          name: name || (role === 'LIBRARIAN' ? 'Library Authority' : 'Student'),
-          role,
-          isProfileComplete: role === 'LIBRARIAN',
+          name: verifiedNeonUser.name || normalizedEmail.split('@')[0],
+          role: 'STUDENT',
+          isProfileComplete: false,
         },
-        include: { studentProfile: true },
+        include: { studentProfile: true, librarianProfile: true },
       });
     }
 
@@ -142,7 +187,8 @@ app.post('/api/auth/sync', async (req, res) => {
         role: user.role,
         isProfileComplete: user.isProfileComplete,
       },
-      profile: user.studentProfile,
+      profile: user.role === 'STUDENT' ? user.studentProfile : null,
+      librarianProfile: user.role === 'LIBRARIAN' ? user.librarianProfile : null,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -151,7 +197,12 @@ app.post('/api/auth/sync', async (req, res) => {
 
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { fullName, email, password, studentId, department, academicYear, semester, collegeAffiliation, neonUserId } = req.body;
+    const { fullName, email, password, studentId, department, academicYear, semester, collegeAffiliation, neonUserId, role: requestedRole } = req.body;
+
+    // Reject any attempt to self-assign a privileged role during public signup
+    if (requestedRole && String(requestedRole).toUpperCase() !== 'STUDENT') {
+      return res.status(403).json({ error: 'Forbidden: Privileged roles cannot be selected during public registration' });
+    }
 
     if (!fullName || !email || !studentId) {
       return res.status(400).json({ error: 'Missing required registration fields' });
@@ -162,6 +213,10 @@ app.post('/api/auth/register', async (req, res) => {
       where: { email: normalizedEmail },
       include: { studentProfile: true },
     });
+
+    if (user && user.role === 'LIBRARIAN') {
+      return res.status(403).json({ error: 'Forbidden: Cannot overwrite an administrative account' });
+    }
 
     if (user && user.studentProfile) {
       return res.status(400).json({ error: 'An account with this college email already exists' });
@@ -244,47 +299,18 @@ app.post('/api/auth/register', async (req, res) => {
         isProfileComplete: user.isProfileComplete,
       },
       profile: user.studentProfile,
+      librarianProfile: null,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/api/auth/me', async (req, res) => {
+app.get('/api/auth/me', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1];
-    const emailParam = req.query.email as string;
-
-    let userId: string | undefined;
-    let userEmail: string | undefined;
-
-    if (token) {
-      try {
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
-        userId = decoded.id;
-        userEmail = decoded.email;
-      } catch {
-        // Token might be from another provider or session
-      }
-    }
-
-    if (!userId && !userEmail && emailParam) {
-      userEmail = emailParam.toLowerCase().trim();
-    }
-
-    if (!userId && !userEmail) {
-      return res.status(401).json({ error: 'No active session or token' });
-    }
-
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          ...(userId ? [{ id: userId }] : []),
-          ...(userEmail ? [{ email: userEmail }] : []),
-        ],
-      },
-      include: { studentProfile: true },
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      include: { studentProfile: true, librarianProfile: true },
     });
 
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -297,16 +323,33 @@ app.get('/api/auth/me', async (req, res) => {
         role: user.role,
         isProfileComplete: user.isProfileComplete,
       },
-      profile: user.studentProfile,
+      profile: user.role === 'STUDENT' ? user.studentProfile : null,
+      librarianProfile: user.role === 'LIBRARIAN' ? user.librarianProfile : null,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Update Student Profile
-app.put('/api/auth/profile/:id', async (req, res) => {
+// Update Student Profile (strictly owner-only, never allows role or impactScore changes)
+app.put('/api/auth/profile/:id', authenticateToken, requireRole(['STUDENT']), async (req: AuthenticatedRequest, res) => {
   try {
+    if ('role' in req.body || 'impactScore' in req.body || 'totalDonations' in req.body || 'activeBorrowingsCount' in req.body) {
+      return res.status(403).json({ error: 'Forbidden: Cannot modify role or privileged account fields' });
+    }
+
+    const existingProfile = await prisma.studentProfile.findUnique({
+      where: { id: req.params.id },
+    });
+
+    if (!existingProfile) {
+      return res.status(404).json({ error: 'Student profile not found' });
+    }
+
+    if (existingProfile.userId !== req.user!.id) {
+      return res.status(403).json({ error: 'Forbidden: You can only update your own profile' });
+    }
+
     const { studentId, department, academicYear, semester, collegeAffiliation } = req.body;
     const updated = await prisma.studentProfile.update({
       where: { id: req.params.id },
@@ -319,6 +362,92 @@ app.put('/api/auth/profile/:id', async (req, res) => {
       },
     });
     res.json(updated);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update Librarian Profile (strictly LIBRARIAN owner-only, never allows role changes)
+app.put('/api/auth/librarian-profile', authenticateToken, requireRole(['LIBRARIAN']), async (req: AuthenticatedRequest, res) => {
+  try {
+    if ('role' in req.body) {
+      return res.status(403).json({ error: 'Forbidden: Cannot modify role via profile update' });
+    }
+
+    const { designation, libraryName, department } = req.body;
+    const updated = await prisma.librarianProfile.upsert({
+      where: { userId: req.user!.id },
+      update: {
+        designation,
+        libraryName,
+        department,
+      },
+      create: {
+        userId: req.user!.id,
+        librarianId: `LIB-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
+        designation: designation || 'University Librarian',
+        libraryName: libraryName || 'Central Academic Library',
+        department: department || 'Library & Information Services',
+      },
+    });
+    res.json(updated);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Secure Server-Side Librarian Provisioning (only callable by an existing LIBRARIAN)
+app.post('/api/admin/librarians', authenticateToken, requireRole(['LIBRARIAN']), async (req: AuthenticatedRequest, res) => {
+  try {
+    const { email, name, password, librarianId, designation, libraryName, department } = req.body;
+    if (!email || !name) {
+      return res.status(400).json({ error: 'Email and name are required' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const passwordHash = password ? await bcrypt.hash(password, 10) : undefined;
+
+    const librarian = await prisma.user.upsert({
+      where: { email: normalizedEmail },
+      update: {
+        role: 'LIBRARIAN',
+        name,
+        ...(passwordHash ? { passwordHash } : {}),
+      },
+      create: {
+        email: normalizedEmail,
+        name,
+        passwordHash,
+        role: 'LIBRARIAN',
+        isProfileComplete: true,
+      },
+    });
+
+    const profile = await prisma.librarianProfile.upsert({
+      where: { userId: librarian.id },
+      update: {
+        designation: designation || 'University Librarian',
+        libraryName: libraryName || 'Central Academic Library',
+        department: department || 'Library & Information Services',
+      },
+      create: {
+        userId: librarian.id,
+        librarianId: librarianId || `LIB-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
+        designation: designation || 'University Librarian',
+        libraryName: libraryName || 'Central Academic Library',
+        department: department || 'Library & Information Services',
+      },
+    });
+
+    res.status(201).json({
+      user: {
+        id: librarian.id,
+        name: librarian.name,
+        email: librarian.email,
+        role: librarian.role,
+      },
+      librarianProfile: profile,
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -425,11 +554,15 @@ app.post('/api/books', authenticateToken, requireRole(['LIBRARIAN']), async (req
 });
 
 // --- BORROW REQUESTS & CIRCULATION ---
-app.get('/api/borrow/requests', async (req, res) => {
+app.get('/api/borrow/requests', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
     const { studentId, status } = req.query;
     const where: any = {};
-    if (studentId) where.studentId = String(studentId);
+    if (req.user!.role === 'STUDENT') {
+      where.studentId = req.user!.id;
+    } else if (studentId) {
+      where.studentId = String(studentId);
+    }
     if (status && status !== 'ALL') where.status = status as BorrowRequestStatus;
 
     const requests = await prisma.borrowRequest.findMany({
@@ -468,9 +601,10 @@ app.get('/api/borrow/requests', async (req, res) => {
   }
 });
 
-app.post('/api/borrow/requests', async (req, res) => {
+app.post('/api/borrow/requests', authenticateToken, requireRole(['STUDENT']), async (req: AuthenticatedRequest, res) => {
   try {
-    const { bookId, studentId } = req.body;
+    const { bookId } = req.body;
+    const studentId = req.user!.id;
     const book = await prisma.book.findUnique({ where: { id: bookId } });
     if (!book) return res.status(404).json({ success: false, message: 'Book not found' });
 
@@ -577,9 +711,9 @@ app.post('/api/borrow/requests/:id/reject', authenticateToken, requireRole(['LIB
   }
 });
 
-app.post('/api/borrow/requests/:id/cancel', async (req, res) => {
+app.post('/api/borrow/requests/:id/cancel', authenticateToken, requireRole(['STUDENT']), async (req: AuthenticatedRequest, res) => {
   try {
-    const { studentId } = req.body;
+    const studentId = req.user!.id;
     const reqItem = await prisma.borrowRequest.findUnique({ where: { id: req.params.id } });
     if (!reqItem || reqItem.studentId !== studentId) {
       return res.status(404).json({ error: 'Request not found' });
@@ -647,11 +781,15 @@ app.post('/api/borrow/requests/:id/issue', authenticateToken, requireRole(['LIBR
 });
 
 // --- TRANSACTIONS & RETURN WORKFLOW ---
-app.get('/api/borrow/transactions', async (req, res) => {
+app.get('/api/borrow/transactions', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
     const { studentId, status } = req.query;
     const where: any = {};
-    if (studentId) where.studentId = String(studentId);
+    if (req.user!.role === 'STUDENT') {
+      where.studentId = req.user!.id;
+    } else if (studentId) {
+      where.studentId = String(studentId);
+    }
     if (status && status !== 'ALL') where.status = status as BorrowTransactionStatus;
 
     const txs = await prisma.borrowTransaction.findMany({
@@ -770,11 +908,15 @@ app.post('/api/borrow/transactions/:id/return', authenticateToken, requireRole([
 });
 
 // --- DONATIONS & IMPACT SCORE ---
-app.get('/api/donations', async (req, res) => {
+app.get('/api/donations', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
     const { studentId, status } = req.query;
     const where: any = {};
-    if (studentId) where.studentId = String(studentId);
+    if (req.user!.role === 'STUDENT') {
+      where.studentId = req.user!.id;
+    } else if (studentId) {
+      where.studentId = String(studentId);
+    }
     if (status && status !== 'ALL') where.status = status as any;
 
     const donations = await prisma.donationRequest.findMany({
@@ -808,9 +950,10 @@ app.get('/api/donations', async (req, res) => {
   }
 });
 
-app.post('/api/donations', async (req, res) => {
+app.post('/api/donations', authenticateToken, requireRole(['STUDENT']), async (req: AuthenticatedRequest, res) => {
   try {
-    const { studentId, title, author, isbn, category, description, condition, images } = req.body;
+    const { title, author, isbn, category, description, condition, images } = req.body;
+    const studentId = req.user!.id;
     const donation = await prisma.donationRequest.create({
       data: {
         studentId,
@@ -936,7 +1079,7 @@ app.post('/api/donations/:id/reject', authenticateToken, requireRole(['LIBRARIAN
 // Sorting formula:
 // Primary: impactScoreSnapshot DESC
 // Secondary: requestTimestamp ASC
-app.get('/api/queue', async (req, res) => {
+app.get('/api/queue', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
     const { bookId } = req.query;
     const where: any = { status: 'WAITING' };
@@ -973,8 +1116,11 @@ app.get('/api/queue', async (req, res) => {
   }
 });
 
-app.get('/api/queue/student/:studentId', async (req, res) => {
+app.get('/api/queue/student/:studentId', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
+    if (req.user!.role === 'STUDENT' && req.params.studentId !== req.user!.id) {
+      return res.status(403).json({ error: 'Forbidden: Cannot view another student queue' });
+    }
     const entries = await prisma.queueEntry.findMany({
       where: { studentId: req.params.studentId, status: 'WAITING' },
       include: { book: { select: { title: true } }, student: { select: { name: true, studentProfile: { select: { studentId: true } } } } },
@@ -1016,9 +1162,10 @@ app.get('/api/queue/student/:studentId', async (req, res) => {
   }
 });
 
-app.post('/api/queue/join', async (req, res) => {
+app.post('/api/queue/join', authenticateToken, requireRole(['STUDENT']), async (req: AuthenticatedRequest, res) => {
   try {
-    const { bookId, studentId } = req.body;
+    const { bookId } = req.body;
+    const studentId = req.user!.id;
     const existing = await prisma.queueEntry.findFirst({
       where: { bookId, studentId, status: 'WAITING' },
     });
@@ -1045,9 +1192,10 @@ app.post('/api/queue/join', async (req, res) => {
   }
 });
 
-app.post('/api/queue/leave', async (req, res) => {
+app.post('/api/queue/leave', authenticateToken, requireRole(['STUDENT']), async (req: AuthenticatedRequest, res) => {
   try {
-    const { queueId, studentId } = req.body;
+    const { queueId } = req.body;
+    const studentId = req.user!.id;
     await prisma.queueEntry.updateMany({
       where: { id: queueId, studentId },
       data: { status: 'CANCELLED' },
@@ -1059,7 +1207,7 @@ app.post('/api/queue/leave', async (req, res) => {
 });
 
 // --- STATS & STUDENTS DIRECTORY ---
-app.get('/api/stats/librarian', async (req, res) => {
+app.get('/api/stats/librarian', authenticateToken, requireRole(['LIBRARIAN']), async (req: AuthenticatedRequest, res) => {
   try {
     const [totalStudents, totalBooksAggr, currentlyBorrowed, pendingBorrowRequests, pendingDonationRequests, totalDonationsApproved] = await Promise.all([
       prisma.studentProfile.count(),
@@ -1086,8 +1234,11 @@ app.get('/api/stats/librarian', async (req, res) => {
   }
 });
 
-app.get('/api/stats/student/:studentId', async (req, res) => {
+app.get('/api/stats/student/:studentId', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
+    if (req.user!.role === 'STUDENT' && req.params.studentId !== req.user!.id) {
+      return res.status(403).json({ error: 'Forbidden: Cannot view another student stats' });
+    }
     const studentId = req.params.studentId;
     const [currentlyBorrowed, pendingBorrowRequests, readyForPickup, profile, approvedDonations, activeQueuePositions] = await Promise.all([
       prisma.borrowTransaction.count({ where: { studentId, status: 'ISSUED' } }),
@@ -1111,7 +1262,7 @@ app.get('/api/stats/student/:studentId', async (req, res) => {
   }
 });
 
-app.get('/api/students', async (req, res) => {
+app.get('/api/students', authenticateToken, requireRole(['LIBRARIAN']), async (req: AuthenticatedRequest, res) => {
   try {
     const profiles = await prisma.studentProfile.findMany({
       include: { user: true },

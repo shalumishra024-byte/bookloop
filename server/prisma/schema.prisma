@@ -24,6 +24,7 @@ model User {
   updatedAt         DateTime        @updatedAt
 
   studentProfile    StudentProfile?
+  librarianProfile  LibrarianProfile?
   borrowRequests    BorrowRequest[]
   borrowTransactions BorrowTransaction[]
   donationRequests  DonationRequest[]
@@ -51,6 +52,21 @@ model StudentProfile {
 
   @@index([impactScore(sort: Desc)])
   @@map("student_profiles")
+}
+
+model LibrarianProfile {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  librarianId        String   @unique
+  designation        String   @default("University Librarian")
+  libraryName        String   @default("Central Academic Library")
+  department         String   @default("Library & Information Services")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("librarian_profiles")
 }
 
 enum BookSource {

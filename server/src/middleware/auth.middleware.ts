@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { UserRole } from '@prisma/client';
+import { PrismaClient, UserRole } from '@prisma/client';
 
+const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'bookloop-neon-secret-jwt-key-2026';
 
 export interface AuthenticatedRequest extends Request {
@@ -13,33 +14,61 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
-export const authenticateToken = (
+/**
+ * Verifies the Bearer JWT token and ALWAYS resolves the user's current role
+ * from the trusted PostgreSQL database by user ID.
+ */
+export const authenticateToken = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
 
-  if (!token) {
-    const devUserId = req.headers['x-dev-user-id'] as string;
-    const devRole = req.headers['x-dev-role'] as UserRole;
-    if (devUserId && devRole) {
-      req.user = { id: devUserId, email: `${devRole.toLowerCase()}@college.edu`, role: devRole, name: 'Dev User' };
-      return next();
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized: Authentication token required' });
     }
-    return res.status(401).json({ error: 'Authentication token required' });
-  }
 
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(403).json({ error: 'Invalid or expired token' });
+    let decoded: { id?: string; email?: string };
+    try {
+      decoded = jwt.verify(token, JWT_SECRET) as { id?: string; email?: string };
+    } catch {
+      return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
     }
-    req.user = decoded as AuthenticatedRequest['user'];
+
+    if (!decoded?.id) {
+      return res.status(401).json({ error: 'Unauthorized: Malformed token payload' });
+    }
+
+    // Always load the authoritative user & role from the database by unique ID
+    const dbUser = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: { id: true, email: true, role: true, name: true },
+    });
+
+    if (!dbUser) {
+      return res.status(401).json({ error: 'Unauthorized: User account no longer exists' });
+    }
+
+    req.user = {
+      id: dbUser.id,
+      email: dbUser.email,
+      role: dbUser.role,
+      name: dbUser.name,
+    };
+
     next();
-  });
+  } catch (err) {
+    return res.status(500).json({ error: 'Authentication verification error' });
+  }
 };
 
+/**
+ * Enforces role-based authorization on protected endpoints using the
+ * database-verified role attached by authenticateToken.
+ */
 export const requireRole = (allowedRoles: UserRole[]) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
@@ -47,8 +76,8 @@ export const requireRole = (allowedRoles: UserRole[]) => {
     }
 
     if (!allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({ 
-        error: `Forbidden: Access restricted to ${allowedRoles.join(' or ')} role.` 
+      return res.status(403).json({
+        error: `Forbidden: Access restricted to ${allowedRoles.join(' or ')} role.`,
       });
     }
 

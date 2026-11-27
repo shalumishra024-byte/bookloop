@@ -11,7 +11,23 @@ async function main() {
   // 1. Create Librarian User
   const librarian = await prisma.user.upsert({
     where: { email: 'librarian@college.edu' },
-    update: {},
+    update: {
+      role: 'LIBRARIAN',
+      librarianProfile: {
+        upsert: {
+          create: {
+            librarianId: 'LIB-2024-001',
+            designation: 'Chief University Librarian',
+            libraryName: 'Central Academic Library',
+            department: 'Library & Information Services',
+          },
+          update: {
+            designation: 'Chief University Librarian',
+            libraryName: 'Central Academic Library',
+          },
+        },
+      },
+    },
     create: {
       id: 'user-lib-1',
       name: 'Dr. Sarah Jenkins',
@@ -19,6 +35,14 @@ async function main() {
       passwordHash,
       role: 'LIBRARIAN',
       isProfileComplete: true,
+      librarianProfile: {
+        create: {
+          librarianId: 'LIB-2024-001',
+          designation: 'Chief University Librarian',
+          libraryName: 'Central Academic Library',
+          department: 'Library & Information Services',
+        },
+      },
     },
   });
 

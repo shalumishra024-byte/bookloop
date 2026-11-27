@@ -260,9 +260,15 @@ async function main() {
   });
 
   // 7. Create Single Identifiable Demo Donation Request (idempotent upsert)
+  const demoImages = [
+    'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600',
+    'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=600',
+  ];
   await prisma.donationRequest.upsert({
     where: { id: 'don-demo-1' },
-    update: {},
+    update: {
+      images: demoImages,
+    },
     create: {
       id: 'don-demo-1',
       studentId: 'user-stu-1',
@@ -274,10 +280,7 @@ async function main() {
       condition: 'GOOD',
       studentQualityRating: 7,
       suggestedPoints: 7,
-      images: [
-        'https://images.unsplash.com/photo-1532012164546-f432f2e3777f?auto=format&fit=crop&q=80&w=600',
-        'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600',
-      ],
+      images: demoImages,
       status: 'PENDING',
       isDemo: true,
     },

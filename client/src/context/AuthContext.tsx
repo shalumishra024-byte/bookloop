@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, StudentProfile, UserRole } from '@college-library/shared';
 import { authClient } from '@/lib/authClient';
+import { API_BASE_URL } from '@/lib/api';
 
 interface AuthContextType {
   user: User | null;
@@ -58,8 +59,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (token) headers['Authorization'] = `Bearer ${token}`;
 
         const url = sessionEmail
-          ? `/api/auth/me?email=${encodeURIComponent(sessionEmail)}`
-          : '/api/auth/me';
+          ? `${API_BASE_URL}/auth/me?email=${encodeURIComponent(sessionEmail)}`
+          : `${API_BASE_URL}/auth/me`;
 
         const res = await fetch(url, { headers });
         if (res.ok) {
@@ -101,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // 2. Fetch server-verified role and profile from database
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: normalizedEmail, password }),
@@ -171,7 +172,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // 2. Persist student identity and profile with role 'STUDENT' in database
-      const res = await fetch('/api/auth/register', {
+      const res = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -201,7 +202,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!studentProfile) return;
     try {
       const token = localStorage.getItem('bookloop_token');
-      const res = await fetch(`/api/auth/profile/${studentProfile.id}`, {
+      const res = await fetch(`${API_BASE_URL}/auth/profile/${studentProfile.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

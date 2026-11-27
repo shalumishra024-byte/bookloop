@@ -12,7 +12,9 @@ import {
   User,
 } from '@college-library/shared';
 
-const API_BASE = '/api';
+import { API_BASE_URL } from '@/lib/api';
+
+const API_BASE = API_BASE_URL;
 
 class LibraryService {
   private getHeaders(): HeadersInit {

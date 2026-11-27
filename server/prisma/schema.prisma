@@ -203,21 +203,25 @@ enum DonationStatus {
 }
 
 model DonationRequest {
-  id             String         @id @default(uuid())
-  studentId      String
-  title          String
-  author         String
-  isbn           String?
-  category       String?
-  description    String
-  condition      BookCondition  @default(GOOD)
-  images         String[]       // URLs to uploaded book condition photographs
-  status         DonationStatus @default(PENDING)
-  pointsAwarded  Int?
-  librarianNotes String?
-  reviewedAt     DateTime?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id                    String         @id @default(uuid())
+  studentId             String
+  title                 String
+  author                String
+  isbn                  String?
+  category              String?
+  description           String
+  condition             BookCondition  @default(GOOD)
+  studentQualityRating  Int            @default(7) // Student-submitted rating (1-10, suggested only)
+  verifiedQualityRating Int?           // Librarian-verified final rating (1-10)
+  suggestedPoints       Int            @default(7) // Suggested points from student rating
+  images                String[]       // URLs to uploaded book condition photographs
+  status                DonationStatus @default(PENDING)
+  pointsAwarded         Int?           // Final points awarded upon librarian approval
+  librarianNotes        String?
+  isDemo                Boolean        @default(false) // Identifies demo/test records
+  reviewedAt            DateTime?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
 
   student        User           @relation(fields: [studentId], references: [id], onDelete: Cascade)
   impactTx       ImpactScoreTransaction?

@@ -211,6 +211,7 @@ class LibraryService {
       category?: string;
       description: string;
       condition: BookCondition;
+      studentQualityRating: number;
       images: string[];
     },
     studentId: string
@@ -220,28 +221,37 @@ class LibraryService {
       headers: this.getHeaders(),
       body: JSON.stringify({ ...data, studentId }),
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to submit donation');
+    }
     return res.json();
   }
 
   async approveDonationRequest(
     donationId: string,
     verifiedCondition: BookCondition,
+    verifiedQualityRating: number,
     librarianNotes?: string,
     targetCategory?: string
   ): Promise<boolean> {
     const res = await fetch(`${API_BASE}/donations/${donationId}/approve`, {
       method: 'POST',
       headers: this.getHeaders(),
-      body: JSON.stringify({ verifiedCondition, notes: librarianNotes, targetCategory }),
+      body: JSON.stringify({ verifiedCondition, verifiedQualityRating, notes: librarianNotes, targetCategory }),
     });
     return res.ok;
   }
 
-  async rejectDonationRequest(donationId: string, librarianNotes?: string): Promise<boolean> {
+  async rejectDonationRequest(
+    donationId: string,
+    librarianNotes?: string,
+    verifiedQualityRating?: number
+  ): Promise<boolean> {
     const res = await fetch(`${API_BASE}/donations/${donationId}/reject`, {
       method: 'POST',
       headers: this.getHeaders(),
-      body: JSON.stringify({ notes: librarianNotes }),
+      body: JSON.stringify({ notes: librarianNotes, verifiedQualityRating }),
     });
     return res.ok;
   }

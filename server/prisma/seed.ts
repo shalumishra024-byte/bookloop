@@ -259,6 +259,30 @@ async function main() {
     },
   });
 
+  // 7. Create Single Identifiable Demo Donation Request (idempotent upsert)
+  await prisma.donationRequest.upsert({
+    where: { id: 'don-demo-1' },
+    update: {},
+    create: {
+      id: 'don-demo-1',
+      studentId: 'user-stu-1',
+      title: 'Data Structures and Algorithms',
+      author: 'Reema Thareja',
+      isbn: '978-0198099307',
+      category: 'Computer Science',
+      description: '[DEMO RECORD] Well-maintained paperback copy with clean pages, minimal pencil highlights on chapter 3, and intact spine.',
+      condition: 'GOOD',
+      studentQualityRating: 7,
+      suggestedPoints: 7,
+      images: [
+        'https://images.unsplash.com/photo-1532012164546-f432f2e3777f?auto=format&fit=crop&q=80&w=600',
+        'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600',
+      ],
+      status: 'PENDING',
+      isDemo: true,
+    },
+  });
+
   console.log('NeonDB seeded successfully!');
 }
 

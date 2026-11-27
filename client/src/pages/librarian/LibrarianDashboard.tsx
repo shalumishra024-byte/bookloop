@@ -201,15 +201,20 @@ export const LibrarianDashboard: React.FC = () => {
               pendingDonations.slice(0, 3).map((don) => (
                 <div key={don.id} className="p-3 border rounded-md flex items-center justify-between bg-card">
                   <div className="space-y-0.5">
-                    <h5 className="text-xs font-semibold leading-tight">{don.title}</h5>
+                    <div className="flex items-center gap-1.5">
+                      <h5 className="text-xs font-semibold leading-tight">{don.title}</h5>
+                      {don.isDemo && (
+                        <Badge variant="outline" className="text-[9px] font-mono px-1 py-0">DEMO</Badge>
+                      )}
+                    </div>
                     <p className="text-[11px] text-muted-foreground">
-                      Donor: <strong className="text-foreground">{don.studentName}</strong> • Condition: {don.condition}
+                      Donor: <strong className="text-foreground">{don.studentName}</strong> • Condition: {don.condition} • Rating: {don.studentQualityRating ?? 7}/10
                     </p>
                     <p className="text-[10px] text-muted-foreground">
                       Submitted: {formatDate(don.createdAt)}
                     </p>
                   </div>
-                  <Link to="/librarian/donations">
+                  <Link to={`/librarian/donations?inspect=${don.id}`}>
                     <Button size="sm" variant="outline" className="text-xs h-7">
                       Inspect
                     </Button>

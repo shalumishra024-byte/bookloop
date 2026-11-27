@@ -127,10 +127,14 @@ export interface DonationRequest {
   category?: string;
   description: string;
   condition: BookCondition;
+  studentQualityRating?: number;
+  verifiedQualityRating?: number;
+  suggestedPoints?: number;
   images: string[];
   status: DonationStatus;
   pointsAwarded?: number;
   librarianNotes?: string;
+  isDemo?: boolean;
   createdAt: string;
   reviewedAt?: string;
 }

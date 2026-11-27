@@ -952,10 +952,14 @@ app.get('/api/donations', authenticateToken, async (req: AuthenticatedRequest, r
       category: d.category || undefined,
       description: d.description,
       condition: d.condition,
+      studentQualityRating: d.studentQualityRating,
+      verifiedQualityRating: d.verifiedQualityRating ?? undefined,
+      suggestedPoints: d.suggestedPoints,
       images: d.images,
       status: d.status,
-      pointsAwarded: d.pointsAwarded || undefined,
+      pointsAwarded: d.pointsAwarded ?? undefined,
       librarianNotes: d.librarianNotes || undefined,
+      isDemo: d.isDemo,
       createdAt: d.createdAt.toISOString(),
       reviewedAt: d.reviewedAt ? d.reviewedAt.toISOString() : undefined,
     }));
@@ -968,8 +972,17 @@ app.get('/api/donations', authenticateToken, async (req: AuthenticatedRequest, r
 
 app.post('/api/donations', authenticateToken, requireRole(['STUDENT']), async (req: AuthenticatedRequest, res) => {
   try {
-    const { title, author, isbn, category, description, condition, images } = req.body;
+    if ('verifiedQualityRating' in req.body || 'pointsAwarded' in req.body) {
+      return res.status(403).json({ error: 'Forbidden: Only a Librarian can assign verified quality ratings or final impact points.' });
+    }
+
+    const { title, author, isbn, category, description, condition, images, studentQualityRating } = req.body;
     const studentId = req.user!.id;
+
+    const defaultByCondition: Record<string, number> = { EXCELLENT: 10, GOOD: 7, ACCEPTABLE: 4 };
+    const rawRating = studentQualityRating !== undefined ? Number(studentQualityRating) : (defaultByCondition[condition] || 7);
+    const clampedRating = Math.min(10, Math.max(1, Math.round(isNaN(rawRating) ? 7 : rawRating)));
+
     const donation = await prisma.donationRequest.create({
       data: {
         studentId,
@@ -979,6 +992,8 @@ app.post('/api/donations', authenticateToken, requireRole(['STUDENT']), async (r
         category,
         description,
         condition: condition as BookCondition,
+        studentQualityRating: clampedRating,
+        suggestedPoints: clampedRating, // Suggested only; final points awarded solely upon Librarian approval
         images: images || [],
         status: 'PENDING',
       },
@@ -991,7 +1006,7 @@ app.post('/api/donations', authenticateToken, requireRole(['STUDENT']), async (r
 
 app.post('/api/donations/:id/approve', authenticateToken, requireRole(['LIBRARIAN']), async (req, res) => {
   try {
-    const { verifiedCondition = 'EXCELLENT', notes, targetCategory } = req.body;
+    const { verifiedCondition = 'EXCELLENT', verifiedQualityRating, notes, targetCategory } = req.body;
     const donation = await prisma.donationRequest.findUnique({
       where: { id: req.params.id },
       include: { student: true },
@@ -1001,11 +1016,15 @@ app.post('/api/donations/:id/approve', authenticateToken, requireRole(['LIBRARIA
     }
 
     const pointsMap: Record<string, number> = { EXCELLENT: 10, GOOD: 7, ACCEPTABLE: 4 };
-    const points = pointsMap[verifiedCondition] || 7;
+    const rawVerified = verifiedQualityRating !== undefined
+      ? Number(verifiedQualityRating)
+      : (pointsMap[verifiedCondition] || donation.studentQualityRating || 7);
+    const finalRating = Math.min(10, Math.max(1, Math.round(isNaN(rawVerified) ? 7 : rawVerified)));
+    const points = finalRating; // Final impact points derive strictly from Librarian's verified quality rating (1-10)
     const category = targetCategory || donation.category || 'General';
 
     // Atomic transaction:
-    // 1. Mark donation approved with points
+    // 1. Mark donation approved with Librarian's verified quality rating and final points
     // 2. Increase student's Impact Score and totalDonations
     // 3. Create Book in catalog with source: DONATION
     // 4. Create BookCopy
@@ -1016,6 +1035,7 @@ app.post('/api/donations/:id/approve', authenticateToken, requireRole(['LIBRARIA
         data: {
           status: 'APPROVED',
           condition: verifiedCondition as BookCondition,
+          verifiedQualityRating: finalRating,
           pointsAwarded: points,
           librarianNotes: notes,
           reviewedAt: new Date(),
@@ -1037,7 +1057,7 @@ app.post('/api/donations/:id/approve', authenticateToken, requireRole(['LIBRARIA
             studentProfileId: profile.id,
             donationRequestId: donation.id,
             pointsAwarded: points,
-            reason: `Approved book donation: ${donation.title} (${verifiedCondition} condition)`,
+            reason: `Approved book donation: ${donation.title} (Verified Rating: ${finalRating}/10, ${verifiedCondition})`,
           },
         });
       }
@@ -1068,7 +1088,7 @@ app.post('/api/donations/:id/approve', authenticateToken, requireRole(['LIBRARIA
       });
     });
 
-    res.json({ success: true, pointsAwarded: points });
+    res.json({ success: true, verifiedQualityRating: finalRating, pointsAwarded: points });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -1076,11 +1096,18 @@ app.post('/api/donations/:id/approve', authenticateToken, requireRole(['LIBRARIA
 
 app.post('/api/donations/:id/reject', authenticateToken, requireRole(['LIBRARIAN']), async (req, res) => {
   try {
-    const { notes } = req.body;
+    const { notes, verifiedQualityRating } = req.body;
+    const rawVerified = verifiedQualityRating !== undefined ? Number(verifiedQualityRating) : undefined;
+    const finalRating = rawVerified !== undefined && !isNaN(rawVerified)
+      ? Math.min(10, Math.max(1, Math.round(rawVerified)))
+      : undefined;
+
     await prisma.donationRequest.update({
       where: { id: req.params.id },
       data: {
         status: 'REJECTED',
+        pointsAwarded: 0,
+        ...(finalRating !== undefined ? { verifiedQualityRating: finalRating } : {}),
         librarianNotes: notes,
         reviewedAt: new Date(),
       },

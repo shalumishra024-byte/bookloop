@@ -5,19 +5,42 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
   size?: 'default' | 'sm' | 'lg' | 'icon';
+  isActive?: boolean;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'default', size = 'default', ...props }, ref) => {
-    const baseStyles = 'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 select-none';
-    
+  ({ className, variant = 'default', size = 'default', isActive = false, onClick, ...props }, ref) => {
+    const [isClicked, setIsClicked] = React.useState(false);
+    const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    React.useEffect(() => {
+      return () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+      };
+    }, []);
+
+    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+      setIsClicked(true);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setIsClicked(false), 220);
+      onClick?.(e);
+    };
+
+    const baseStyles =
+      'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CE6F87] disabled:pointer-events-none disabled:opacity-50 select-none active:scale-[0.98]';
+
     const variants = {
-      default: 'bg-primary text-primary-foreground shadow hover:bg-primary/90 active:scale-[0.98]',
-      destructive: 'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90',
-      outline: 'border border-border bg-transparent shadow-sm hover:bg-accent hover:text-accent-foreground',
-      secondary: 'bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80',
-      ghost: 'hover:bg-accent hover:text-accent-foreground',
-      link: 'text-primary underline-offset-4 hover:underline',
+      default:
+        'bg-[#F8DBBD] text-[#2D161D] border border-[#E8C4A0] shadow-sm hover:bg-[#F3CFA9] active:bg-[#CE6F87] active:text-white active:border-[#CE6F87]',
+      destructive:
+        'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 active:bg-[#CE6F87] active:text-white',
+      outline:
+        'border border-[#E8C4A0] bg-[#F8DBBD]/45 text-foreground shadow-sm hover:bg-[#F8DBBD] hover:text-[#2D161D] active:bg-[#CE6F87] active:text-white active:border-[#CE6F87]',
+      secondary:
+        'bg-[#F8DBBD]/80 text-[#2D161D] border border-[#E8C4A0]/80 shadow-sm hover:bg-[#F8DBBD] active:bg-[#CE6F87] active:text-white active:border-[#CE6F87]',
+      ghost:
+        'hover:bg-[#F8DBBD] hover:text-[#2D161D] active:bg-[#CE6F87] active:text-white',
+      link: 'text-[#CE6F87] underline-offset-4 hover:underline',
     };
 
     const sizes = {
@@ -27,10 +50,17 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       icon: 'h-9 w-9',
     };
 
+    const activePinkClass =
+      (isActive || isClicked) && variant !== 'link'
+        ? '!bg-[#CE6F87] !text-white !border-[#CE6F87]'
+        : '';
+
     return (
       <button
-        className={cn(baseStyles, variants[variant], sizes[size], className)}
+        data-pressed={isActive || isClicked ? 'true' : 'false'}
+        className={cn(baseStyles, variants[variant], sizes[size], activePinkClass, className)}
         ref={ref}
+        onClick={handleClick}
         {...props}
       />
     );

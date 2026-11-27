@@ -4,7 +4,8 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { BookOpen, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { BrandLogo } from '@/components/ui/BrandLogo';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export const Register: React.FC = () => {
   const { registerStudent } = useAuth();
@@ -70,8 +71,8 @@ export const Register: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <div className="w-full max-w-xl space-y-6">
         <div className="text-center space-y-2">
-          <div className="inline-flex h-12 w-12 rounded-xl bg-foreground text-background items-center justify-center font-bold mb-2 shadow-sm">
-            <BookOpen className="h-6 w-6" />
+          <div className="inline-flex justify-center mb-2">
+            <BrandLogo className="h-14 w-14 rounded-2xl shadow-md" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Student Enrollment</h1>
           <p className="text-sm text-muted-foreground">College Identity & Library Card Registration</p>

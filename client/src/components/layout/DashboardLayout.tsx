@@ -4,8 +4,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { BrandLogo } from '@/components/ui/BrandLogo';
 import {
-  BookOpen,
   LayoutDashboard,
   Library,
   GitPullRequest,
@@ -63,7 +63,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
       {/* Mobile Top Header */}
       <header className="md:hidden flex items-center justify-between p-4 border-b border-border bg-card">
         <div className="flex items-center space-x-2">
-          <BookOpen className="h-6 w-6 text-foreground" />
+          <BrandLogo className="h-7 w-7 rounded-lg" />
           <span className="font-bold tracking-tight text-lg">BookLoop</span>
           <Badge variant={isLibrarian ? 'default' : 'secondary'} className="text-[10px] ml-1">
             {isLibrarian ? 'Librarian' : 'Student'}
@@ -89,9 +89,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
           {/* Logo & Branding */}
           <div className="p-5 border-b border-border flex items-center justify-between">
             <Link to={isLibrarian ? '/librarian' : '/student'} className="flex items-center space-x-2.5">
-              <div className="h-9 w-9 rounded-md bg-foreground text-background flex items-center justify-center font-bold">
-                <BookOpen className="h-5 w-5" />
-              </div>
+              <BrandLogo className="h-9 w-9 rounded-lg shadow-sm" />
               <div>
                 <span className="font-bold text-base tracking-tight block">BookLoop</span>
                 <span className="text-xs text-muted-foreground block -mt-1">College Library</span>
@@ -134,11 +132,11 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                   className={`
                     flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors
                     ${active 
-                      ? 'bg-foreground text-background font-semibold shadow-xs' 
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'}
+                      ? 'bg-[#CE6F87] text-white font-semibold shadow-sm' 
+                      : 'text-muted-foreground hover:bg-[#F8DBBD] hover:text-[#2D161D] active:bg-[#CE6F87] active:text-white'}
                   `}
                 >
-                  <Icon className={`h-4 w-4 ${active ? 'text-background' : 'text-muted-foreground'}`} />
+                  <Icon className={`h-4 w-4 ${active ? 'text-white' : 'text-muted-foreground'}`} />
                   <span>{item.label}</span>
                 </Link>
               );

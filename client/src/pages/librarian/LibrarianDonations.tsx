@@ -114,7 +114,8 @@ export const LibrarianDonations: React.FC = () => {
             <Button
               key={status}
               size="sm"
-              variant={filterStatus === status ? 'default' : 'outline'}
+              variant="default"
+              isActive={filterStatus === status}
               className="text-xs h-8"
               onClick={() => setFilterStatus(status)}
             >
@@ -386,8 +387,8 @@ export const LibrarianDonations: React.FC = () => {
                           onClick={() => setVerifiedRating(num)}
                           className={`h-6 text-[11px] rounded border font-mono transition-colors ${
                             verifiedRating === num
-                              ? 'bg-foreground text-background border-foreground font-bold'
-                              : 'bg-background text-muted-foreground border-border hover:bg-muted'
+                              ? 'bg-[#CE6F87] text-white border-[#CE6F87] font-bold'
+                              : 'bg-[#F8DBBD] text-[#2D161D] border-[#E8C4A0] hover:bg-[#F3CFA9]'
                           }`}
                         >
                           {num}

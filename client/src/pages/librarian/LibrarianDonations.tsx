@@ -119,7 +119,7 @@ export const LibrarianDonations: React.FC = () => {
               className={`text-xs h-8 ${
                 filterStatus === status
                   ? ''
-                  : '!bg-[#FFF9F4] !text-[#2D161D] !border-[#E8C4A0] [@media(hover:hover)]:hover:!bg-[#CE6F87] [@media(hover:hover)]:hover:!text-white [@media(hover:hover)]:hover:!border-[#CE6F87]'
+                  : '!bg-[#FFB7A5]/45 !text-[#355C7D] !border-[#FFB7A5] [@media(hover:hover)]:hover:!bg-[#FFB7A5] [@media(hover:hover)]:hover:!text-[#355C7D]'
               }`}
               onClick={() => setFilterStatus(status)}
             >
@@ -391,8 +391,8 @@ export const LibrarianDonations: React.FC = () => {
                           onClick={() => setVerifiedRating(num)}
                           className={`h-6 text-[11px] rounded border font-mono transition-colors ${
                             verifiedRating === num
-                              ? 'bg-[#CE6F87] text-white border-[#CE6F87] font-bold'
-                              : 'bg-white text-[#2D161D] border-[#E8C4A0] hover:bg-[#FFF9F4]'
+                              ? 'bg-[#F67280] text-white border-[#F67280] font-bold'
+                              : 'bg-white text-[#355C7D] border-[#FFB7A5] hover:bg-[#FFB7A5]/50'
                           }`}
                         >
                           {num}

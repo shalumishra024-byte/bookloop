@@ -4,27 +4,27 @@
 
 @layer base {
   :root {
-    /* BookLoop Official Theme: Light Cream (#F8DBBD) main background + White cards + Pink (#CE6F87) primary */
-    --background: 30 82% 86%;
-    --foreground: 342 34% 13%;
+    /* BookLoop Soft Peach Theme: #FFE4D6 background, #FFFFFF cards, #FFB7A5 secondary surfaces, #F67280 primary, #6C5B7B secondary text, #355C7D main text */
+    --background: 20 100% 92%;
+    --foreground: 208 40% 35%;
     --card: 0 0% 100%;
-    --card-foreground: 342 34% 13%;
+    --card-foreground: 208 40% 35%;
     --popover: 0 0% 100%;
-    --popover-foreground: 342 34% 13%;
-    --primary: 345 49% 62%;
+    --popover-foreground: 208 40% 35%;
+    --primary: 354 88% 71%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 30 100% 98%;
-    --secondary-foreground: 342 34% 13%;
-    --muted: 30 55% 94%;
-    --muted-foreground: 342 18% 36%;
-    --accent: 30 100% 98%;
-    --accent-foreground: 342 34% 13%;
+    --secondary: 12 100% 82%;
+    --secondary-foreground: 208 40% 35%;
+    --muted: 20 80% 95%;
+    --muted-foreground: 272 15% 42%;
+    --accent: 12 100% 82%;
+    --accent-foreground: 208 40% 35%;
     --destructive: 0 78% 55%;
     --destructive-foreground: 0 0% 100%;
-    --border: 30 45% 76%;
-    --input: 30 45% 78%;
-    --ring: 345 49% 62%;
-    --radius: 0.5rem;
+    --border: 12 100% 82%;
+    --input: 12 85% 84%;
+    --ring: 354 88% 71%;
+    --radius: 0.75rem;
   }
 
   .dark {

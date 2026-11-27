@@ -165,10 +165,10 @@ export const BookCatalog: React.FC = () => {
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`text-xs px-2.5 py-1 rounded-full transition-colors whitespace-nowrap ${
+              className={`text-xs px-3 py-1 rounded-full transition-colors whitespace-nowrap ${
                 selectedCategory === cat
-                  ? 'bg-foreground text-background font-medium'
-                  : 'bg-muted text-muted-foreground hover:text-foreground'
+                  ? 'bg-[#F67280] text-white font-semibold shadow-xs'
+                  : 'bg-[#FFB7A5]/50 text-[#355C7D] border border-[#FFB7A5]/70 hover:bg-[#FFB7A5]'
               }`}
             >
               {cat}

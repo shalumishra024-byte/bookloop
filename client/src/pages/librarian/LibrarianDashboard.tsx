@@ -65,7 +65,7 @@ export const LibrarianDashboard: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-border">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Librarian Management Portal</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#6C5B7B]">Librarian Management Portal</h1>
           <p className="text-sm text-muted-foreground">
             Circulation management, book inventory, donation verification, and queue oversight
           </p>
@@ -119,11 +119,11 @@ export const LibrarianDashboard: React.FC = () => {
           </div>
         </Card>
 
-        <Card className="p-3.5 border-amber-500/20 bg-amber-500/5">
-          <span className="text-[11px] font-medium text-amber-800 dark:text-amber-300 block truncate">Borrow Requests</span>
+        <Card className="p-3.5 border-[#FFB7A5] bg-[#FFB7A5]/35">
+          <span className="text-[11px] font-semibold text-[#6C5B7B] block truncate">Borrow Requests</span>
           <div className="mt-1 flex items-baseline justify-between">
-            <span className="text-xl font-bold text-foreground">{stats?.pendingBorrowRequests || 0}</span>
-            <Clock className="h-3.5 w-3.5 text-amber-500" />
+            <span className="text-xl font-bold text-[#355C7D]">{stats?.pendingBorrowRequests || 0}</span>
+            <Clock className="h-3.5 w-3.5 text-[#F67280]" />
           </div>
         </Card>
 

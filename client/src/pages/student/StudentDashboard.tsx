@@ -73,7 +73,7 @@ export const StudentDashboard: React.FC = () => {
       {/* Welcome Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-border">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Student Dashboard</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#6C5B7B]">Student Dashboard</h1>
           <p className="text-sm text-muted-foreground">
             Welcome back, {user?.name}. Roll No: <span className="font-mono font-medium text-foreground">{studentProfile?.studentId}</span> ({studentProfile?.department})
           </p>
@@ -154,16 +154,16 @@ export const StudentDashboard: React.FC = () => {
         </Card>
 
         {/* Card 4 - Impact Score */}
-        <Card className="p-4 border-amber-500/20 bg-amber-500/5">
+        <Card className="p-4 border-[#FFB7A5] bg-[#FFB7A5]/35">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-amber-800 dark:text-amber-300">Donation Impact Score</span>
-            <Sparkles className="h-4 w-4 text-amber-500 fill-amber-500" />
+            <span className="text-xs font-semibold text-[#6C5B7B]">Donation Impact Score</span>
+            <Sparkles className="h-4 w-4 text-[#F67280] fill-[#F67280]" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
-            <div className="text-2xl font-bold text-foreground">{studentProfile?.impactScore || 0} pts</div>
-            <span className="text-xs text-muted-foreground">{studentProfile?.totalDonations || 0} approved donations</span>
+            <div className="text-2xl font-bold text-[#355C7D]">{studentProfile?.impactScore || 0} pts</div>
+            <span className="text-xs text-[#6C5B7B]">{studentProfile?.totalDonations || 0} approved donations</span>
           </div>
-          <p className="text-[11px] text-muted-foreground mt-1">
+          <p className="text-[11px] text-[#355C7D]/85 mt-1">
             Priority weight in book waiting queues
           </p>
         </Card>

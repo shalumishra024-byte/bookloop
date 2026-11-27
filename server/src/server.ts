@@ -73,7 +73,7 @@ async function verifyNeonAuthSession(token: string): Promise<{ id: string; email
 // --- AUTHENTICATION ---
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { email, password, neonToken } = req.body;
+    const { email, password, neonToken, intendedRole } = req.body;
     let verifiedNeonUser: { id: string; email: string; name?: string } | null = null;
 
     if (neonToken) {
@@ -112,6 +112,22 @@ app.post('/api/auth/login', async (req, res) => {
       const match = await bcrypt.compare(password, user.passwordHash);
       if (!match) {
         return res.status(401).json({ error: 'Invalid email or password' });
+      }
+    }
+
+    // Verify selected login role against the authoritative database role
+    if (intendedRole) {
+      const normalizedIntended = String(intendedRole).toUpperCase();
+      if (normalizedIntended !== 'STUDENT' && normalizedIntended !== 'LIBRARIAN') {
+        return res.status(400).json({ error: 'Invalid role selection' });
+      }
+      if (user.role !== normalizedIntended) {
+        return res.status(403).json({
+          error:
+            normalizedIntended === 'LIBRARIAN'
+              ? 'Access denied: This account does not have Librarian privileges.'
+              : 'Role mismatch: Please select Librarian to sign in with an authority account.',
+        });
       }
     }
 

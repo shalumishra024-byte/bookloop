@@ -10,7 +10,7 @@ interface AuthContextType {
   role: UserRole | null;
   isAuthenticated: boolean;
   loading: boolean;
-  login: (email: string, password: string) => Promise<UserRole>;
+  login: (email: string, password: string, intendedRole?: UserRole) => Promise<UserRole>;
   loginWithGoogle: () => Promise<void>;
   registerStudent: (data: {
     fullName: string;
@@ -90,7 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initSession();
   }, []);
 
-  const login = async (email: string, password: string): Promise<UserRole> => {
+  const login = async (email: string, password: string, intendedRole?: UserRole): Promise<UserRole> => {
     const normalizedEmail = email.toLowerCase().trim();
     let neonToken: string | undefined;
 
@@ -111,7 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const res = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: normalizedEmail, password, neonToken }),
+      body: JSON.stringify({ email: normalizedEmail, password, neonToken, intendedRole }),
     });
 
     if (!res.ok) {

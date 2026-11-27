@@ -107,8 +107,21 @@ async function run() {
     const wrongPass = await req('POST', '/api/auth/login', { email: stuEmail, password: 'wrongpassword' });
     assert(wrongPass.status === 401, `Wrong password rejected (${wrongPass.status})`);
 
-    // 8. Librarian login & role verification
-    const libLogin = await req('POST', '/api/auth/login', { email: 'librarian@college.edu', password: 'password123' });
+    // 8. Role verification matrix on /api/auth/login
+    const stuAsStu = await req('POST', '/api/auth/login', { email: stuEmail, password: 'password123', intendedRole: 'STUDENT' });
+    assert(stuAsStu.status === 200 && stuAsStu.data.user.role === 'STUDENT', `Student selected + Student account allowed (200)`);
+
+    const stuAsLib = await req('POST', '/api/auth/login', { email: stuEmail, password: 'password123', intendedRole: 'LIBRARIAN' });
+    assert(stuAsLib.status === 403, `Librarian selected + Student account rejected (${stuAsLib.status})`);
+
+    const libAsStu = await req('POST', '/api/auth/login', { email: 'librarian@college.edu', password: 'password123', intendedRole: 'STUDENT' });
+    assert(libAsStu.status === 403, `Student selected + Librarian account rejected (${libAsStu.status})`);
+
+    const unauthAcct = await req('POST', '/api/auth/login', { email: 'nobody@college.edu', password: 'password123', intendedRole: 'LIBRARIAN' });
+    assert(unauthAcct.status === 401, `Unauthorized account rejected (${unauthAcct.status})`);
+
+    // 9. Librarian login & role verification
+    const libLogin = await req('POST', '/api/auth/login', { email: 'librarian@college.edu', password: 'password123', intendedRole: 'LIBRARIAN' });
     assert(
       libLogin.status === 200 && libLogin.data.user.role === 'LIBRARIAN' && !!libLogin.data.librarianProfile,
       `Librarian login verified LIBRARIAN role and LibrarianProfile (${libLogin.data.librarianProfile?.librarianId})`

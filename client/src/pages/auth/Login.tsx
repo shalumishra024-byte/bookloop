@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { UserRole } from '@college-library/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -9,6 +10,7 @@ import { BookOpen, ShieldCheck, GraduationCap, Lock, Mail } from 'lucide-react';
 export const Login: React.FC = () => {
   const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const [selectedRole, setSelectedRole] = useState<UserRole>('STUDENT');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -16,15 +18,15 @@ export const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError('Please enter both your email address and password');
+    if (!email.trim() || !password) {
+      setError('Please enter both your email address and password.');
       return;
     }
     setLoading(true);
     setError('');
     try {
-      // Login returns verified role from Neon Auth + database
-      const verifiedRole = await login(email, password);
+      // Server verifies credentials via Neon Auth/DB and checks actual DB role against selectedRole
+      const verifiedRole = await login(email, password, selectedRole);
       if (verifiedRole === 'LIBRARIAN') {
         navigate('/librarian');
       } else {
@@ -32,24 +34,6 @@ export const Login: React.FC = () => {
       }
     } catch (err: any) {
       setError(err.message || 'Invalid login credentials');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDemoLogin = async (role: 'STUDENT' | 'LIBRARIAN') => {
-    setLoading(true);
-    setError('');
-    try {
-      const emailToUse = role === 'LIBRARIAN' ? 'librarian@college.edu' : 'alex.rivera@college.edu';
-      const verifiedRole = await login(emailToUse, 'password123');
-      if (verifiedRole === 'LIBRARIAN') {
-        navigate('/librarian');
-      } else {
-        navigate('/student');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to authenticate');
     } finally {
       setLoading(false);
     }
@@ -82,7 +66,7 @@ export const Login: React.FC = () => {
           <CardHeader className="space-y-1">
             <CardTitle className="text-xl">Sign in to your account</CardTitle>
             <CardDescription>
-              Enter your college credentials or select a one-click role
+              Select your role and enter your registered credentials
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -92,16 +76,48 @@ export const Login: React.FC = () => {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-3">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Role Selection */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-foreground">Login as</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant={selectedRole === 'STUDENT' ? 'default' : 'outline'}
+                    className="w-full text-xs font-medium flex items-center justify-center"
+                    onClick={() => {
+                      setSelectedRole('STUDENT');
+                      setError('');
+                    }}
+                  >
+                    <GraduationCap className="h-4 w-4 mr-1.5" />
+                    <span>Student</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={selectedRole === 'LIBRARIAN' ? 'default' : 'outline'}
+                    className="w-full text-xs font-medium flex items-center justify-center"
+                    onClick={() => {
+                      setSelectedRole('LIBRARIAN');
+                      setError('');
+                    }}
+                  >
+                    <ShieldCheck className="h-4 w-4 mr-1.5" />
+                    <span>Librarian</span>
+                  </Button>
+                </div>
+              </div>
+
               <div className="space-y-1">
                 <label className="text-xs font-medium text-foreground">Email Address</label>
                 <div className="relative">
                   <Input
                     type="email"
-                    placeholder="student@college.edu"
+                    placeholder="Enter your registered email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-9"
+                    autoComplete="email"
                     required
                   />
                   <Mail className="h-4 w-4 text-muted-foreground absolute left-3 top-2.5" />
@@ -109,25 +125,23 @@ export const Login: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-medium text-foreground">Password</label>
-                  <span className="text-[11px] text-muted-foreground">Default: password123</span>
-                </div>
+                <label className="text-xs font-medium text-foreground">Password</label>
                 <div className="relative">
                   <Input
                     type="password"
-                    placeholder="••••••••"
+                    placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-9"
+                    autoComplete="current-password"
                     required
                   />
                   <Lock className="h-4 w-4 text-muted-foreground absolute left-3 top-2.5" />
                 </div>
               </div>
 
-              <Button type="submit" className="w-full mt-2" disabled={loading}>
-                {loading ? 'Authenticating...' : 'Sign In with Email'}
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Signing in...' : 'Sign In'}
               </Button>
             </form>
 
@@ -167,35 +181,6 @@ export const Login: React.FC = () => {
               </svg>
               Sign in with Google OAuth
             </Button>
-
-            {/* Quick Fast Logins */}
-            <div className="pt-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                Fast Role Logins
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="w-full text-xs flex items-center justify-center space-x-1"
-                  onClick={() => handleDemoLogin('STUDENT')}
-                >
-                  <GraduationCap className="h-3.5 w-3.5 mr-1" />
-                  <span>Student Demo</span>
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="w-full text-xs flex items-center justify-center space-x-1"
-                  onClick={() => handleDemoLogin('LIBRARIAN')}
-                >
-                  <ShieldCheck className="h-3.5 w-3.5 mr-1" />
-                  <span>Librarian Demo</span>
-                </Button>
-              </div>
-            </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-2 border-t border-border pt-4 text-center">
             <p className="text-xs text-muted-foreground">

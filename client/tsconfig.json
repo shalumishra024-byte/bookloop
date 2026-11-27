@@ -19,8 +19,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@college-library/shared": ["../../packages/shared/src/index.ts"],
-      "@college-library/shared/*": ["../../packages/shared/src/*"]
+      "@college-library/shared": ["./src/shared/index.ts"],
+      "@college-library/shared/*": ["./src/shared/*"]
     }
   },
   "include": ["src"]

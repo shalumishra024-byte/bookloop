@@ -7,7 +7,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      '@college-library/shared': path.resolve(__dirname, '../../packages/shared/src/index.ts'),
+      '@college-library/shared': path.resolve(__dirname, './src/shared/index.ts'),
+      '@/shared': path.resolve(__dirname, './src/shared'),
     },
   },
   server: {

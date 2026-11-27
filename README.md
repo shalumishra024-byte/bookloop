@@ -6,47 +6,41 @@ A modern, professional, and responsive web application engineered for college li
 
 ## 1. Project Overview & Architecture
 
-BookLoop is architected as a clean TypeScript monorepo with strict role-based separation:
+BookLoop is architected into two primary, self-contained directories:
 
 ```
 bookloop/
 │
-├── apps/
-│   ├── web/                         # React 18, Vite, Tailwind CSS, Lucide icons, React Hook Form, Zod
-│   │   ├── src/
-│   │   │   ├── components/
-│   │   │   │   ├── layout/          # DashboardLayout, collapsible navigation, dark/light switcher
-│   │   │   │   └── ui/              # shadcn-inspired minimal UI primitives (Button, Card, Dialog, Table, Tabs, Badge)
-│   │   │   ├── context/             # AuthContext (role management & Google OAuth simulation), ThemeContext
-│   │   │   ├── pages/
-│   │   │   │   ├── auth/            # Login, Student Registration with college verification
-│   │   │   │   ├── student/         # Student Dashboard, Book Catalog, Details, Borrowings, Queue, Donations
-│   │   │   │   ├── librarian/       # Librarian Dashboard, Borrow Requests, Returns, Inventory, Students, Queue
-│   │   │   │   └── shared/          # Account profile & credentials
-│   │   │   ├── services/            # Abstracted LibraryService & API client
-│   │   │   └── routes/              # ProtectedRoute with strict role guards
-│   │   └── package.json
-│   │
-│   └── api/                         # Node.js, Express.js, TypeScript REST API
-│       ├── src/
-│       │   ├── middleware/          # JWT authentication & role-based access control (RBAC)
-│       │   ├── server.ts            # REST endpoints, copy-level isolation, queue priority engine
-│       │   └── tsconfig.json
-│       └── package.json
+├── client/                          # React 18, Vite, Tailwind CSS, Lucide icons, React Hook Form, Zod
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── layout/              # DashboardLayout, collapsible navigation, dark/light switcher
+│   │   │   └── ui/                  # shadcn-inspired minimal UI primitives (Button, Card, Dialog, Table, Tabs, Badge)
+│   │   ├── context/                 # AuthContext (Neon Managed Auth & RBAC), ThemeContext
+│   │   ├── pages/
+│   │   │   ├── auth/                # Login, Student Registration with college verification
+│   │   │   ├── student/             # Student Dashboard, Book Catalog, Details, Borrowings, Queue, Donations
+│   │   │   ├── librarian/           # Librarian Dashboard, Borrow Requests, Returns, Inventory, Students, Queue
+│   │   │   └── shared/              # Account profile & credentials
+│   │   ├── services/                # Abstracted LibraryService & API client
+│   │   ├── routes/                  # ProtectedRoute with strict role guards
+│   │   └── shared/                  # Self-contained shared domain types & validators
+│   ├── package.json                 # Client dependencies & scripts
+│   └── vite.config.ts
 │
-├── packages/
-│   └── shared/                      # Shared domain models, TypeScript interfaces, and Zod validators
-│       ├── src/
-│       │   ├── types/               # User, Book, BookCopy, BorrowRequest, DonationRequest, QueueEntry
-│       │   ├── validators/          # Registration, Book, Donation Zod validation schemas
-│       │   └── data/                # Initial seed data for development
-│       └── package.json
+├── server/                          # Node.js, Express.js, TypeScript REST API
+│   ├── src/
+│   │   ├── middleware/              # JWT authentication & role-based access control (RBAC)
+│   │   └── server.ts                # REST endpoints, copy-level isolation, queue priority engine
+│   ├── prisma/
+│   │   ├── schema.prisma            # Relational PostgreSQL / NeonDB schema with queue composite indexes
+│   │   └── seed.ts                  # Database seeding script
+│   ├── package.json                 # Server dependencies & scripts
+│   └── tsconfig.json
 │
-├── prisma/
-│   └── schema.prisma                # Relational PostgreSQL / NeonDB schema with queue composite indexes
-│
+├── API_DOCUMENTATION.md             # Complete specification of all REST API endpoints
 ├── .env.example                     # Environment variables template
-├── package.json                     # Monorepo workspace orchestrator
+├── package.json                     # Root orchestrator scripts
 └── README.md
 ```
 
@@ -134,20 +128,24 @@ cd bookloop
 npm install
 ```
 
-### Build the Monorepo
+### Build Client & Server
 ```bash
-# Builds shared types, frontend web, and backend api
+# Builds both backend (server) and frontend (client)
 npm run build
 ```
 
 ### Run the Development Servers
 ```bash
 # Start Vite frontend (port 5173)
-npm run dev:web
+npm run dev:client
 
 # In a separate terminal, start Express API server (port 5000)
-npm run dev:api
+npm run dev:server
 ```
+
+### API Documentation
+Complete endpoint specifications, request/response models, and role permissions are documented in:
+👉 **[`API_DOCUMENTATION.md`](file:///c:/Users/ACER/OneDrive/Desktop/bookloop/API_DOCUMENTATION.md)**
 
 ---
 

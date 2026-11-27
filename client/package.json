@@ -1,5 +1,5 @@
 {
-  "name": "@college-library/web",
+  "name": "bookloop-client",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -9,7 +9,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@college-library/shared": "*",
     "@neon/auth": "^0.8.2",
     "@hookform/resolvers": "^3.9.0",
     "clsx": "^2.1.1",

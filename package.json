@@ -1,20 +1,20 @@
 {
-  "name": "college-library",
+  "name": "bookloop",
   "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "client",
+    "server"
   ],
   "scripts": {
-    "dev:web": "npm --workspace=@college-library/web run dev",
-    "dev:api": "npm --workspace=@college-library/api run dev",
-    "build:web": "npm --workspace=@college-library/web run build",
-    "build:api": "npm --workspace=@college-library/api run build",
-    "build:shared": "npm --workspace=@college-library/shared run build",
-    "build": "npm run build:shared && npm run build:web && npm run build:api",
-    "db:generate": "npx prisma generate",
-    "db:push": "npx prisma db push"
+    "dev:client": "npm --workspace=bookloop-client run dev",
+    "dev:server": "npm --workspace=bookloop-server run dev",
+    "build:client": "npm --workspace=bookloop-client run build",
+    "build:server": "npm --workspace=bookloop-server run build",
+    "build": "npm run build:server && npm run build:client",
+    "db:generate": "npm --workspace=bookloop-server run db:generate",
+    "db:push": "npm --workspace=bookloop-server run db:push",
+    "db:seed": "npm --workspace=bookloop-server run db:seed"
   },
   "devDependencies": {
     "typescript": "^5.4.5"

@@ -16,8 +16,10 @@ out/
 !.env.example
 *.env
 *.env.*
-apps/web/.env
-apps/api/.env
+client/.env
+client/.env.*
+server/.env
+server/.env.*
 
 # Logs
 logs

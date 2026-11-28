@@ -86,6 +86,8 @@ export interface BorrowRequest {
   bookId: string;
   bookTitle: string;
   bookAuthor: string;
+  bookAvailableCopies?: number;
+  bookTotalCopies?: number;
   bookCopyId?: string;
   copyNumber?: string;
   requestDate: string;

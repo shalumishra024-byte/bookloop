@@ -161,12 +161,25 @@ export const LibrarianDashboard: React.FC = () => {
                 <div key={req.id} className="p-3 border rounded-md flex items-center justify-between bg-card">
                   <div className="space-y-0.5">
                     <h5 className="text-xs font-semibold leading-tight">{req.bookTitle}</h5>
+                    {req.bookAuthor && (
+                      <p className="text-[11px] text-muted-foreground">Author: {req.bookAuthor}</p>
+                    )}
                     <p className="text-[11px] text-muted-foreground">
                       Student: <strong className="text-foreground">{req.studentName}</strong> ({req.studentRollNo})
                     </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      Requested: {formatDate(req.requestDate)} • Impact: {req.impactScoreAtRequest} pts
-                    </p>
+                    <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                      <Badge
+                        variant={(req.bookAvailableCopies ?? 0) <= 0 ? 'destructive' : (req.bookAvailableCopies ?? 0) === 1 ? 'warning' : 'secondary'}
+                        className="text-[10px]"
+                      >
+                        {(req.bookAvailableCopies ?? 0) <= 0
+                          ? 'Available Copies: 0 – Currently Unavailable'
+                          : `Available Copies: ${req.bookAvailableCopies}${req.bookTotalCopies !== undefined ? ` / ${req.bookTotalCopies}` : ''}`}
+                      </Badge>
+                      <span className="text-[10px] text-muted-foreground">
+                        Requested: {formatDate(req.requestDate)}
+                      </span>
+                    </div>
                   </div>
                   <Link to="/librarian/requests">
                     <Button size="sm" variant="outline" className="text-xs h-7">

@@ -1,19 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { libraryService } from '@/services/libraryService';
-import { BorrowRequest } from '@college-library/shared';
+import { Book, BorrowRequest } from '@college-library/shared';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
-import { CheckCircle2, XCircle, Clock, Check, Sparkles } from 'lucide-react';
+import { AlertTriangle, BookOpen, Check, RefreshCw, Sparkles } from 'lucide-react';
 
 export const LibrarianBorrowings: React.FC = () => {
   const [requests, setRequests] = useState<BorrowRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedReq, setSelectedReq] = useState<BorrowRequest | null>(null);
   const [actionType, setActionType] = useState<'ACCEPT' | 'REJECT' | 'ISSUE' | null>(null);
+  const [liveBook, setLiveBook] = useState<Book | null>(null);
+  const [loadingInventory, setLoadingInventory] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [pickupHours, setPickupHours] = useState(48);
   const [notes, setNotes] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -30,13 +33,51 @@ export const LibrarianBorrowings: React.FC = () => {
     loadRequests();
   }, []);
 
+  const refreshBookInventory = async (bookId: string): Promise<Book | null> => {
+    setLoadingInventory(true);
+    try {
+      const latest = await libraryService.getBookById(bookId);
+      if (latest) {
+        setLiveBook(latest);
+        return latest;
+      }
+      return null;
+    } finally {
+      setLoadingInventory(false);
+    }
+  };
+
+  const openActionDialog = async (req: BorrowRequest, type: 'ACCEPT' | 'REJECT' | 'ISSUE') => {
+    setSelectedReq(req);
+    setActionType(type);
+    setActionError(null);
+    setLiveBook(null);
+    await refreshBookInventory(req.bookId);
+  };
+
   const handleAction = async () => {
     if (!selectedReq || !actionType) return;
     setProcessing(true);
+    setActionError(null);
     try {
       if (actionType === 'ACCEPT') {
-        const ok = await libraryService.approveBorrowRequest(selectedReq.id, pickupHours, notes);
-        if (ok) setNotification(`Accepted! Physical copy reserved with a ${pickupHours}-hour collection deadline.`);
+        // Revalidate latest inventory from the database before approval
+        const latestBook = await refreshBookInventory(selectedReq.bookId);
+        const latestAvailable = latestBook?.availableCopies ?? selectedReq.bookAvailableCopies ?? 0;
+        if (latestAvailable <= 0) {
+          setActionError('Available Copies: 0 – Currently Unavailable. Inventory changed while viewing this request.');
+          await loadRequests();
+          return;
+        }
+
+        const result = await libraryService.approveBorrowRequest(selectedReq.id, pickupHours, notes);
+        if (!result.ok) {
+          setActionError(result.error || 'Unable to approve request.');
+          await refreshBookInventory(selectedReq.bookId);
+          await loadRequests();
+          return;
+        }
+        setNotification(`Approved! Physical copy reserved with a ${pickupHours}-hour collection deadline.`);
       } else if (actionType === 'REJECT') {
         const ok = await libraryService.rejectBorrowRequest(selectedReq.id, notes || 'Rejected by library authority.');
         if (ok) setNotification('Borrowing request rejected.');
@@ -46,15 +87,19 @@ export const LibrarianBorrowings: React.FC = () => {
       }
       setSelectedReq(null);
       setActionType(null);
+      setLiveBook(null);
       setNotes('');
       loadRequests();
     } catch {
-      setNotification('Error processing action.');
+      setActionError('Error processing action.');
     } finally {
       setProcessing(false);
       setTimeout(() => setNotification(null), 3500);
     }
   };
+
+  const currentAvailable = liveBook?.availableCopies ?? selectedReq?.bookAvailableCopies ?? 0;
+  const currentTotal = liveBook?.totalCopies ?? selectedReq?.bookTotalCopies;
 
   return (
     <div className="space-y-6">
@@ -87,16 +132,19 @@ export const LibrarianBorrowings: React.FC = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Student</TableHead>
-                  <TableHead>Book Title</TableHead>
+                  <TableHead>Book &amp; Author</TableHead>
+                  <TableHead>Inventory</TableHead>
                   <TableHead>Impact Score</TableHead>
                   <TableHead>Requested On</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Copy & Deadline</TableHead>
+                  <TableHead>Copy &amp; Deadline</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {requests.map((r) => (
+                {requests.map((r) => {
+                  const avail = r.bookAvailableCopies ?? 0;
+                  return (
                   <TableRow key={r.id}>
                     <TableCell>
                       <div className="space-y-0.5">
@@ -104,8 +152,28 @@ export const LibrarianBorrowings: React.FC = () => {
                         <span className="text-[11px] text-muted-foreground font-mono">{r.studentRollNo}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="font-medium text-xs max-w-[200px] truncate">
-                      {r.bookTitle}
+                    <TableCell className="max-w-[210px]">
+                      <div className="space-y-0.5">
+                        <span className="font-medium text-xs block truncate">{r.bookTitle}</span>
+                        {r.bookAuthor && (
+                          <span className="text-[11px] text-muted-foreground block truncate">by {r.bookAuthor}</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-0.5">
+                        <Badge
+                          variant={avail <= 0 ? 'destructive' : avail === 1 ? 'warning' : 'secondary'}
+                          className="text-[11px] whitespace-nowrap"
+                        >
+                          {avail <= 0 ? 'Available Copies: 0 – Currently Unavailable' : `Available Copies: ${avail}`}
+                        </Badge>
+                        {r.bookTotalCopies !== undefined && (
+                          <span className="text-[10px] text-muted-foreground block">
+                            Total Copies: {r.bookTotalCopies}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <span className="inline-flex items-center text-xs font-bold text-amber-700 dark:text-amber-400">
@@ -150,21 +218,15 @@ export const LibrarianBorrowings: React.FC = () => {
                           <Button
                             size="sm"
                             className="h-7 text-xs px-2"
-                            onClick={() => {
-                              setSelectedReq(r);
-                              setActionType('ACCEPT');
-                            }}
+                            onClick={() => openActionDialog(r, 'ACCEPT')}
                           >
-                            Accept
+                            Approve
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
                             className="h-7 text-xs px-2 text-destructive hover:bg-destructive/10"
-                            onClick={() => {
-                              setSelectedReq(r);
-                              setActionType('REJECT');
-                            }}
+                            onClick={() => openActionDialog(r, 'REJECT')}
                           >
                             Reject
                           </Button>
@@ -175,10 +237,7 @@ export const LibrarianBorrowings: React.FC = () => {
                         <Button
                           size="sm"
                           className="h-7 text-xs px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white"
-                          onClick={() => {
-                            setSelectedReq(r);
-                            setActionType('ISSUE');
-                          }}
+                          onClick={() => openActionDialog(r, 'ISSUE')}
                         >
                           <Check className="h-3.5 w-3.5 mr-1" />
                           Mark as Issued
@@ -190,7 +249,8 @@ export const LibrarianBorrowings: React.FC = () => {
                       )}
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           )}
@@ -216,10 +276,66 @@ export const LibrarianBorrowings: React.FC = () => {
           <div className="space-y-3 py-2">
             <div className="p-3 bg-muted rounded-md space-y-1">
               <p className="text-xs font-semibold">{selectedReq.bookTitle}</p>
+              {selectedReq.bookAuthor && (
+                <p className="text-[11px] text-muted-foreground">Author: {selectedReq.bookAuthor}</p>
+              )}
               <p className="text-xs text-muted-foreground">
                 Student: <strong>{selectedReq.studentName}</strong> ({selectedReq.studentRollNo}) • Impact Score: {selectedReq.impactScoreAtRequest} pts
               </p>
             </div>
+
+            {/* Live Book Inventory Card */}
+            <div className={`p-3 rounded-lg border flex items-center justify-between gap-2 ${
+              currentAvailable <= 0
+                ? 'bg-destructive/10 border-destructive/30'
+                : currentAvailable === 1
+                ? 'bg-amber-500/10 border-amber-500/30'
+                : 'bg-[#FFE4D6]/60 border-[#FFB7A5]'
+            }`}>
+              <div className="flex items-center space-x-2">
+                <BookOpen className="h-4 w-4 text-[#6C5B7B] flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-[#355C7D]">
+                    {loadingInventory
+                      ? 'Checking latest inventory...'
+                      : currentAvailable <= 0
+                      ? 'Available Copies: 0 – Currently Unavailable'
+                      : `Available Copies: ${currentAvailable}`}
+                  </p>
+                  {currentTotal !== undefined && !loadingInventory && (
+                    <p className="text-[11px] text-[#6C5B7B]">
+                      Total Copies in Library: {currentTotal}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 text-[11px] px-2"
+                onClick={() => refreshBookInventory(selectedReq.bookId)}
+                disabled={loadingInventory || processing}
+              >
+                <RefreshCw className={`h-3 w-3 mr-1 ${loadingInventory ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
+
+            {actionType === 'ACCEPT' && !loadingInventory && currentAvailable <= 0 && (
+              <div className="p-2.5 rounded-md bg-destructive/15 border border-destructive/30 text-xs text-destructive flex items-start space-x-2 font-medium">
+                <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                <span>
+                  This book currently has 0 available copies. Approval is disabled until a physical copy is returned or added to inventory.
+                </span>
+              </div>
+            )}
+
+            {actionError && (
+              <div className="p-2.5 rounded-md bg-destructive/15 border border-destructive/30 text-xs text-destructive font-medium">
+                {actionError}
+              </div>
+            )}
 
             {actionType === 'ACCEPT' && (
               <div className="space-y-1">
@@ -269,9 +385,9 @@ export const LibrarianBorrowings: React.FC = () => {
             size="sm"
             variant={actionType === 'REJECT' ? 'destructive' : 'default'}
             onClick={handleAction}
-            disabled={processing}
+            disabled={processing || (actionType === 'ACCEPT' && (loadingInventory || currentAvailable <= 0))}
           >
-            {processing ? 'Processing...' : 'Confirm'}
+            {processing ? 'Processing...' : actionType === 'ACCEPT' ? 'Approve Request' : 'Confirm'}
           </Button>
         </DialogFooter>
       </Dialog>

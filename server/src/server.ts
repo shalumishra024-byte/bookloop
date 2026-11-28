@@ -586,7 +586,7 @@ app.get('/api/borrow/requests', authenticateToken, async (req: AuthenticatedRequ
       orderBy: { requestDate: 'desc' },
       include: {
         student: { select: { name: true, email: true, studentProfile: { select: { studentId: true } } } },
-        book: { select: { title: true, author: true } },
+        book: { select: { title: true, author: true, availableCopies: true, totalCopies: true } },
         copy: { select: { copyNumber: true } },
       },
     });
@@ -600,6 +600,8 @@ app.get('/api/borrow/requests', authenticateToken, async (req: AuthenticatedRequ
       bookId: r.bookId,
       bookTitle: r.book.title,
       bookAuthor: r.book.author,
+      bookAvailableCopies: r.book.availableCopies,
+      bookTotalCopies: r.book.totalCopies,
       bookCopyId: r.bookCopyId || undefined,
       copyNumber: r.copy?.copyNumber || undefined,
       requestDate: r.requestDate.toISOString(),
@@ -660,38 +662,43 @@ app.post('/api/borrow/requests', authenticateToken, requireRole(['STUDENT']), as
 app.post('/api/borrow/requests/:id/accept', authenticateToken, requireRole(['LIBRARIAN']), async (req, res) => {
   try {
     const { pickupWindowHours = 48, notes } = req.body;
-    const borrowReq = await prisma.borrowRequest.findUnique({
-      where: { id: req.params.id },
-      include: { book: true },
-    });
-    if (!borrowReq || borrowReq.status !== 'PENDING') {
-      return res.status(400).json({ error: 'Request is not pending' });
-    }
-
-    // Find available physical copy in database
-    const availableCopy = await prisma.bookCopy.findFirst({
-      where: { bookId: borrowReq.bookId, status: 'AVAILABLE' },
-    });
-    if (!availableCopy) {
-      return res.status(400).json({ error: 'No physical copies available to reserve' });
-    }
-
     const pickupDeadline = new Date(Date.now() + Number(pickupWindowHours) * 3600 * 1000);
 
-    // Atomically reserve copy and update book availableCopies
-    await prisma.$transaction([
-      prisma.bookCopy.update({
+    // Atomically revalidate latest inventory & reserve copy without allowing negative stock
+    const result = await prisma.$transaction(async (tx) => {
+      const borrowReq = await tx.borrowRequest.findUnique({
+        where: { id: req.params.id },
+        include: { book: true },
+      });
+      if (!borrowReq || borrowReq.status !== 'PENDING') {
+        return { errorStatus: 400, error: 'Request is not pending' };
+      }
+
+      if (borrowReq.book.availableCopies <= 0) {
+        return { errorStatus: 400, error: 'Available Copies: 0 – Currently Unavailable' };
+      }
+
+      const availableCopy = await tx.bookCopy.findFirst({
+        where: { bookId: borrowReq.bookId, status: 'AVAILABLE' },
+      });
+      if (!availableCopy) {
+        return { errorStatus: 400, error: 'Available Copies: 0 – Currently Unavailable' };
+      }
+
+      const nextAvailable = Math.max(0, borrowReq.book.availableCopies - 1);
+
+      await tx.bookCopy.update({
         where: { id: availableCopy.id },
         data: { status: 'RESERVED' },
-      }),
-      prisma.book.update({
+      });
+      await tx.book.update({
         where: { id: borrowReq.bookId },
         data: {
-          availableCopies: { decrement: 1 },
-          status: borrowReq.book.availableCopies - 1 <= 0 ? 'UNAVAILABLE' : 'AVAILABLE',
+          availableCopies: nextAvailable,
+          status: nextAvailable <= 0 ? 'UNAVAILABLE' : 'AVAILABLE',
         },
-      }),
-      prisma.borrowRequest.update({
+      });
+      await tx.borrowRequest.update({
         where: { id: borrowReq.id },
         data: {
           status: 'ACCEPTED',
@@ -701,8 +708,14 @@ app.post('/api/borrow/requests/:id/accept', authenticateToken, requireRole(['LIB
           librarianNotes: notes,
           reviewDate: new Date(),
         },
-      }),
-    ]);
+      });
+
+      return { success: true };
+    });
+
+    if ('errorStatus' in result && result.errorStatus) {
+      return res.status(result.errorStatus).json({ error: result.error });
+    }
 
     res.json({ success: true });
   } catch (err: any) {

@@ -95,13 +95,21 @@ class LibraryService {
     return res.json();
   }
 
-  async approveBorrowRequest(requestId: string, pickupWindowHours: number = 48, notes?: string): Promise<boolean> {
+  async approveBorrowRequest(
+    requestId: string,
+    pickupWindowHours: number = 48,
+    notes?: string
+  ): Promise<{ ok: boolean; error?: string }> {
     const res = await fetch(`${API_BASE}/borrow/requests/${requestId}/accept`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({ pickupWindowHours, notes }),
     });
-    return res.ok;
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { ok: false, error: data.error || 'Failed to approve request' };
+    }
+    return { ok: true };
   }
 
   async rejectBorrowRequest(requestId: string, notes?: string): Promise<boolean> {
